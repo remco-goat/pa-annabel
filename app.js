@@ -136,6 +136,19 @@ $("code-form").addEventListener("submit", async (e) => {
   // Bij succes vuurt onAuthStateChange en schakelt de app zelf om.
 });
 
+$("have-code").addEventListener("click", () => {
+  const email = $("email").value.trim();
+  if (!email) {
+    $("login-msg").textContent = "Vul eerst je e-mailadres in.";
+    return;
+  }
+  pendingEmail = email;
+  $("login-step-email").hidden = true;
+  $("login-step-code").hidden = false;
+  $("login-msg").textContent = "";
+  $("code").focus();
+});
+
 $("code-back").addEventListener("click", () => {
   $("login-step-code").hidden = true;
   $("login-step-email").hidden = false;
