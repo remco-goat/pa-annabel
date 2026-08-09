@@ -95,7 +95,9 @@ $("login-form").addEventListener("submit", async (e) => {
   $("login-msg").textContent = "Versturen…";
   const { error } = await sb.auth.signInWithOtp({
     email: $("email").value.trim(),
-    options: { emailRedirectTo: window.location.href },
+    // Registratie staat uit in Supabase; dit voorkomt dat de aanvraag het
+    // alsnog probeert en geeft een duidelijke fout bij een onbekend adres.
+    options: { emailRedirectTo: window.location.href, shouldCreateUser: false },
   });
   btn.disabled = false;
   $("login-msg").textContent = error
