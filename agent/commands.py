@@ -42,7 +42,7 @@ def main() -> int:
     ]
 
     try:
-        result = think(commands, {}, open_tasks, datetime.now(config.TZ), commands_only=True)
+        result = think(commands, {}, open_tasks, datetime.now(config.TZ), commands_only=True, model=config.MODEL_COMMANDS)
     except Exception as exc:
         logger.exception("brein faalde op opdrachten")
         db.finish_run(run_id, ok=False, stats={"opdrachten": len(commands)}, error=str(exc))

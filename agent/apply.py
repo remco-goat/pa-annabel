@@ -17,6 +17,19 @@ def _execute(proposal: dict) -> str:
     action = proposal.get("action") or {}
     kind = proposal["kind"]
 
+    # 'Afvinken' in de app: de bestaande Todoist-taak sluiten i.p.v. iets aanmaken.
+    if action.get("complete_task_id"):
+        return todo_adapter().complete(str(action["complete_task_id"]))
+
+    if kind == "draft_reply" and action.get("send"):
+        # Alleen gezet wanneer Remco in de app expliciet op 'Verstuur' tikte.
+        return gmail_draft.send_message(
+            to=action.get("draft_to", ""),
+            subject=action.get("draft_subject", ""),
+            body=action.get("draft_body", ""),
+            thread_id=action.get("thread_id", ""),
+        )
+
     if kind == "create_task":
         return todo_adapter().create(
             action.get("task_title") or proposal["title"],

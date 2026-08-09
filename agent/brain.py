@@ -164,6 +164,7 @@ def think(
     now: datetime,
     *,
     commands_only: bool = False,
+    model: str | None = None,
 ) -> dict[str, Any]:
     content: list[dict[str, Any]] = []
 
@@ -214,7 +215,7 @@ def think(
     )
 
     with client.messages.stream(
-        model=config.MODEL,
+        model=model or config.MODEL,
         max_tokens=32000,
         system=SYSTEM,
         output_config={"effort": config.EFFORT, "format": {"type": "json_schema", "schema": SCHEMA}},

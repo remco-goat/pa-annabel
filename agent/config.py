@@ -49,6 +49,10 @@ TODOIST_TOKEN = os.environ.get("TODOIST_TOKEN", "")
 
 # --- Claude ---------------------------------------------------------------
 MODEL = os.environ.get("ASSISTANT_MODEL", "claude-opus-5")
+# Opdrachten parsen ("zet X op mijn lijst") is simpel werk — daar volstaat een
+# goedkoper model. De volledige run (oordelen wat belangrijk is, concepten in
+# Remco's toon) blijft op het hoofdmodel.
+MODEL_COMMANDS = os.environ.get("ASSISTANT_MODEL_COMMANDS", "claude-sonnet-5")
 EFFORT = os.environ.get("ASSISTANT_EFFORT", "medium")  # low | medium | high | xhigh | max
 
 # --- Gedrag ---------------------------------------------------------------

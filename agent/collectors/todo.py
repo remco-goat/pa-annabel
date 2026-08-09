@@ -107,6 +107,12 @@ class TodoistAdapter:
         task = resp.json()
         return f"https://app.todoist.com/app/task/{task['id']}"
 
+    def complete(self, task_id: str) -> str:
+        """Vinkt een taak af (close). Herhalende taken schuiven door naar de
+        volgende datum — dat is Todoist-gedrag en meestal precies de bedoeling."""
+        self._client.post(f"/tasks/{task_id}/close").raise_for_status()
+        return "afgevinkt in Todoist"
+
     def delete(self, task_id: str) -> None:
         """Alleen gebruikt om een testtaak weer op te ruimen."""
         self._client.delete(f"/tasks/{task_id}").raise_for_status()
