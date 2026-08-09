@@ -1,0 +1,288 @@
+:root {
+  --bg: #f7f7f5;
+  --card: #ffffff;
+  --ink: #16181d;
+  --muted: #6b7280;
+  --line: #e5e5e1;
+  --accent: #2f6f4f;
+  --on-accent: #ffffff;
+  --danger: #a33;
+  --now: #b4451f;
+  --radius: 14px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #111418;
+    --card: #1a1e24;
+    --ink: #e9eaec;
+    --muted: #9aa1ab;
+    --line: #2a2f37;
+    --accent: #6fbf90;
+    --on-accent: #10241a;
+    --danger: #e07a7a;
+    --now: #e8955f;
+  }
+}
+
+* { box-sizing: border-box; }
+
+/* Moet vóór alle display-regels staan: een class als `.toast { display: flex }`
+   wint anders van het `hidden`-attribuut en het element blijft zichtbaar. */
+[hidden] { display: none !important; }
+
+body {
+  margin: 0 auto;
+  padding: 0 1rem calc(5rem + env(safe-area-inset-bottom));
+  background: var(--bg);
+  color: var(--ink);
+  font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  max-width: 40rem;
+  overscroll-behavior-y: contain;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: calc(0.9rem + env(safe-area-inset-top)) 0 0.7rem;
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+  z-index: 3;
+}
+
+h1 { font-size: 1.05rem; font-weight: 600; letter-spacing: 0.01em; margin: 0; }
+h2 { font-size: 1.15rem; line-height: 1.32; margin: 0 0 0.45rem; }
+
+.badge {
+  display: inline-block;
+  min-width: 1.35rem;
+  padding: 0 0.4rem;
+  margin-left: 0.35rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.35rem;
+  text-align: center;
+  vertical-align: 2px;
+}
+
+.muted { color: var(--muted); font-size: 0.875rem; }
+.error { color: var(--danger); font-size: 0.9rem; }
+
+/* --- brief --------------------------------------------------------------- */
+.brief {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1rem 1.1rem;
+  margin-bottom: 1.5rem;
+}
+.brief p { margin: 0 0 0.6rem; }
+
+/* --- groepen ------------------------------------------------------------- */
+.group-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  margin: 1.5rem 0 0.6rem;
+}
+.group-label.now { color: var(--now); }
+.group-label.failed { color: var(--danger); }
+
+/* --- kaarten ------------------------------------------------------------- */
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0.9rem 1rem;
+  margin-bottom: 0.7rem;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.card.gone { opacity: 0; transform: translateX(1.5rem); }
+.card.is-failed { border-color: var(--danger); }
+
+.card .kind {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+.card .title { font-weight: 600; margin: 0.15rem 0 0.3rem; }
+.card .detail { font-size: 0.9rem; color: var(--muted); margin: 0 0 0.5rem; white-space: pre-wrap; }
+.card .fail-msg {
+  font-size: 0.85rem;
+  color: var(--danger);
+  margin: 0 0 0.6rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  word-break: break-word;
+}
+
+.card details { margin: 0 0 0.6rem; }
+.card summary { font-size: 0.85rem; color: var(--accent); cursor: pointer; padding: 0.2rem 0; }
+.card pre {
+  white-space: pre-wrap;
+  font: 0.85rem/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.7rem;
+  margin: 0.5rem 0 0;
+  overflow-x: auto;
+}
+
+.source { margin: 0 0 0.7rem; }
+.source-link {
+  font-size: 0.85rem;
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px solid currentColor;
+  padding-bottom: 1px;
+}
+
+.actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+
+/* --- knoppen ------------------------------------------------------------- */
+button {
+  font: inherit;
+  font-size: 0.9rem;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--ink);
+  border-radius: 9px;
+  padding: 0.55rem 0.95rem;
+  cursor: pointer;
+  min-height: 2.75rem;          /* comfortabel raakvlak op mobiel */
+  transition: transform 0.08s ease;
+}
+button:active { transform: scale(0.96); }
+button:disabled { opacity: 0.5; }
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
+.icon-btn { border: none; background: none; font-size: 1.3rem; padding: 0.25rem 0.5rem; min-height: 2.5rem; }
+.link-btn { border: none; background: none; color: var(--muted); text-decoration: underline; padding: 0; min-height: 0; }
+
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+
+form { display: flex; gap: 0.5rem; margin: 1rem 0; }
+input {
+  font: inherit;
+  flex: 1;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--card);
+  color: var(--ink);
+  min-width: 0;
+}
+
+/* --- lege staat ---------------------------------------------------------- */
+.empty { text-align: center; padding: 3.5rem 0 2rem; }
+.empty p { margin: 0.2rem 0; }
+.empty-mark {
+  font-size: 2.5rem;
+  color: var(--accent);
+  opacity: 0.5;
+  margin-bottom: 0.5rem !important;
+}
+
+/* --- geschiedenis -------------------------------------------------------- */
+#history { margin-top: 2rem; }
+#history summary {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 0.5rem 0;
+}
+.hist-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--line);
+}
+.hist-row:last-child { border-bottom: none; }
+.hist-mark { color: var(--accent); flex: none; }
+.hist-row span:nth-child(2) { flex: 1; }
+
+/* --- skeleton ------------------------------------------------------------ */
+.skeleton {
+  background: linear-gradient(90deg, var(--card) 25%, var(--line) 50%, var(--card) 75%);
+  background-size: 400% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+  border-radius: var(--radius);
+  margin-bottom: 0.9rem;
+}
+.sk-brief { height: 7rem; }
+.sk-card { height: 8.5rem; }
+@keyframes shimmer { from { background-position: 100% 0; } to { background-position: 0 0; } }
+
+/* --- toast --------------------------------------------------------------- */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(1.2rem + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: calc(100% - 2rem);
+  max-width: 24rem;
+  background: var(--ink);
+  color: var(--bg);
+  border-radius: 11px;
+  padding: 0.75rem 1rem;
+  font-size: 0.9rem;
+  box-shadow: 0 6px 24px rgb(0 0 0 / 0.25);
+  animation: rise 0.22s ease;
+}
+.toast span { flex: 1; }
+.toast .link-btn { color: var(--bg); font-weight: 600; text-decoration: underline; }
+@keyframes rise { from { opacity: 0; transform: translate(-50%, 0.6rem); } to { opacity: 1; transform: translate(-50%, 0); } }
+
+/* --- pull to refresh ----------------------------------------------------- */
+#pull {
+  position: fixed;
+  top: env(safe-area-inset-top);
+  left: 50%;
+  margin-left: -0.75rem;
+  height: 0;
+  z-index: 1;
+  transition: transform 0.2s ease;
+  pointer-events: none;
+}
+.spinner {
+  display: block;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 2px solid var(--line);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+#pull.busy .spinner { opacity: 1; animation: spin 0.7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 2.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}

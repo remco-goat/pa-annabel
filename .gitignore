@@ -1,0 +1,7 @@
+.env
+.secrets/
+__pycache__/
+*.pyc
+.venv/
+pwa/config.js
+logs/
