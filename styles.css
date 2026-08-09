@@ -74,6 +74,38 @@ h2 { font-size: 1.15rem; line-height: 1.32; margin: 0 0 0.45rem; }
 .muted { color: var(--muted); font-size: 0.875rem; }
 .error { color: var(--danger); font-size: 0.9rem; }
 
+/* --- opdrachten ----------------------------------------------------------- */
+#cmd-form { margin: 0 0 0.6rem; }
+#cmd-form button { flex: none; width: 2.75rem; padding: 0; font-size: 1.1rem; }
+#mic.listening { border-color: var(--now); color: var(--now); animation: pulse 1s ease infinite; }
+@keyframes pulse { 50% { transform: scale(1.12); } }
+
+.queue-row {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.875rem;
+  color: var(--muted);
+  padding: 0.3rem 0.2rem;
+}
+.queue-row::before { content: "→"; color: var(--accent); }
+#approved-queue:not(:empty) { margin-bottom: 1rem; }
+.cmd-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.875rem;
+  color: var(--muted);
+  background: var(--card);
+  border: 1px dashed var(--line);
+  border-radius: 9px;
+  padding: 0.45rem 0.75rem;
+  margin-bottom: 0.4rem;
+}
+.cmd-row span { flex: 1; }
+.cmd-row::before { content: "⏳"; }
+#cmd-open:not(:empty) { margin-bottom: 1.2rem; }
+
 /* --- brief --------------------------------------------------------------- */
 .brief {
   background: var(--card);

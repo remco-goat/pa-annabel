@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#111418">
+<!-- Alles draait lokaal; alleen praten met onze eigen Supabase is toegestaan.
+     Beschermt tegen het injecteren of naladen van vreemde scripts. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://sfkcnfwgjwqrmtmcksxd.supabase.co; img-src 'self' data:; style-src 'self'; script-src 'self'; base-uri 'self'; form-action 'self'">
 <title>PA Annabel</title>
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon.svg">
@@ -23,17 +26,36 @@
 <main>
   <!-- Inloggen -->
   <section id="login" hidden>
-    <p class="muted">Log in met een magic link. Er komt een mailtje; die link opent deze app.</p>
-    <form id="login-form">
-      <input id="email" type="email" inputmode="email" autocomplete="email"
-             placeholder="jouw@email.nl" required>
-      <button type="submit" class="primary">Stuur link</button>
-    </form>
+    <div id="login-step-email">
+      <p class="muted">Vul je e-mailadres in; je krijgt een 6-cijferige code gemaild.</p>
+      <form id="login-form">
+        <input id="email" type="email" inputmode="email" autocomplete="email"
+               placeholder="jouw@email.nl" required>
+        <button type="submit" class="primary">Stuur code</button>
+      </form>
+    </div>
+    <div id="login-step-code" hidden>
+      <p class="muted">Typ de code uit de mail. Dit hoeft maar één keer — daarna blijf je ingelogd.</p>
+      <form id="code-form">
+        <input id="code" type="text" inputmode="numeric" autocomplete="one-time-code"
+               pattern="[0-9]{6}" maxlength="6" placeholder="123456" required>
+        <button type="submit" class="primary">Log in</button>
+      </form>
+      <button id="code-back" class="link-btn">Ander adres of nieuwe code</button>
+    </div>
     <p id="login-msg" class="muted" role="status"></p>
   </section>
 
   <!-- App -->
   <section id="app" hidden>
+    <form id="cmd-form" autocomplete="off">
+      <input id="cmd" type="text" placeholder="Vraag of opdracht voor Annabel…" maxlength="500">
+      <button type="button" id="mic" aria-label="Inspreken" hidden>&#127908;</button>
+      <button type="submit" class="primary" aria-label="Versturen">&#8593;</button>
+    </form>
+    <div id="approved-queue"></div>
+    <div id="cmd-open"></div>
+
     <article id="brief" class="brief" hidden>
       <h2 id="brief-headline"></h2>
       <p id="brief-body"></p>
@@ -75,6 +97,7 @@
 </div>
 
 <script src="config.js"></script>
+<script src="vendor/supabase.js"></script>
 <script type="module" src="app.js"></script>
 </body>
 </html>
