@@ -242,7 +242,7 @@ async function loadCommands() {
 
 // --- data -----------------------------------------------------------------
 
-const SELECT = "*,signal:signals(payload,title,source)";
+const SELECT = "*,signal:signals(payload,title,source,external_id)";
 
 async function load() {
   const since = new Date();
@@ -477,10 +477,27 @@ function card(p, { failed = false } = {}) {
 
   const actions = document.createElement("div");
   actions.className = "actions";
+  const isTodoTask = p.signal?.source === "todo" && p.signal?.external_id;
+
   if (failed) {
     actions.append(
       button("Opnieuw proberen", "primary", () => decide(p, "approved", "Staat weer klaar")),
       button("Laat maar", "", () => decide(p, "rejected", "Afgewezen")),
+    );
+  } else if (isTodoTask) {
+    // Kaart over een bestaande Todoist-taak: afvinken sluit de taak echt.
+    actions.append(
+      button("✓ Afvinken", "primary", () =>
+        decide(p, "approved", "Wordt afgevinkt in Todoist", { complete_task_id: p.signal.external_id })),
+      button("Morgen", "", () => decide(p, "snoozed", "Morgen weer")),
+      button("Nee", "", () => decide(p, "rejected", "Afgewezen")),
+    );
+  } else if (p.kind === "draft_reply") {
+    actions.append(
+      button("Verstuur", "primary", () =>
+        decide(p, "approved", "Wordt verstuurd", { send: true })),
+      button("Alleen concept", "", () => decide(p, "approved", "Concept wordt klaargezet")),
+      button("Nee", "", () => decide(p, "rejected", "Afgewezen")),
     );
   } else {
     actions.append(
@@ -501,9 +518,11 @@ function button(label, cls, onClick) {
   return b;
 }
 
-async function decide(proposal, status, message) {
+async function decide(proposal, status, message, extraAction = null) {
   const previous = proposal.status;
+  const previousAction = proposal.action;
   const patch = { status, decided_at: new Date().toISOString() };
+  if (extraAction) patch.action = { ...(proposal.action || {}), ...extraAction };
   if (status === "snoozed") {
     const t = new Date();
     t.setDate(t.getDate() + 1);
@@ -523,7 +542,7 @@ async function decide(proposal, status, message) {
 
   toast(message, async () => {
     await sb.from("proposals")
-      .update({ status: previous, decided_at: null, snooze_until: null })
+      .update({ status: previous, decided_at: null, snooze_until: null, action: previousAction })
       .eq("id", proposal.id);
     proposal.status = previous;
     load();
