@@ -116,6 +116,41 @@ h2 { font-size: 1.15rem; line-height: 1.32; margin: 0 0 0.45rem; }
 }
 .brief p { margin: 0 0 0.6rem; }
 
+.point {
+  position: relative;
+  padding: 0.55rem 0 0.55rem 1.6rem;
+  border-top: 1px solid var(--line);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.15s ease;
+}
+.point:first-child { border-top: none; }
+.point::before {
+  content: "";
+  position: absolute;
+  left: 0.1rem;
+  top: 0.85rem;
+  width: 0.85rem;
+  height: 0.85rem;
+  border: 1.5px solid var(--muted);
+  border-radius: 50%;
+}
+.point.struck {
+  opacity: 0.45;
+  text-decoration: line-through;
+  text-decoration-color: var(--muted);
+}
+.point.struck::before {
+  content: "✓";
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 0.65rem;
+  line-height: 0.85rem;
+  text-align: center;
+}
+#brief-time { display: block; margin-top: 0.7rem; }
+
 /* --- groepen ------------------------------------------------------------- */
 .group-label {
   font-size: 0.75rem;
