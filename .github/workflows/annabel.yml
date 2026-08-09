@@ -6,9 +6,7 @@ name: annabel
 # GitHub Actions-cron loopt in UTC en kan enkele minuten later vuren.
 on:
   schedule:
-    - cron: "5 5 * * *"     # ~07:05 NL (zomertijd)
-    - cron: "30 10 * * *"   # ~12:30 NL
-    - cron: "30 15 * * *"   # ~17:30 NL
+    - cron: "0 5-17 * * *"  # elk uur, 07:00-19:00 NL (zomertijd; winter: 08:00-20:00)
     - cron: "*/15 * * * *"  # tick — opdrachten en goedkeuringen snel oppakken
   workflow_dispatch:
     inputs:
@@ -43,6 +41,7 @@ jobs:
             SUPABASE_SERVICE_KEY=${{ secrets.SUPABASE_SERVICE_KEY }}
             ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}
             TODOIST_TOKEN=${{ secrets.TODOIST_TOKEN }}
+            VAPID_PRIVATE_KEY=${{ secrets.VAPID_PRIVATE_KEY }}
             TODO_PROVIDER=todoist
             ASSISTANT_MODEL=claude-opus-5
             ASSISTANT_EFFORT=medium
@@ -55,7 +54,7 @@ jobs:
           printf '%s' "$GOOGLE_TOKEN"  > .secrets/google_token.json
 
       - name: Volledige run (brief + voorstellen)
-        if: github.event.schedule == '5 5 * * *' || github.event.schedule == '30 10 * * *' || github.event.schedule == '30 15 * * *' || inputs.job == 'run'
+        if: github.event.schedule == '0 5-17 * * *' || inputs.job == 'run'
         run: python -m agent.run
 
       - name: Tick (uitvoeren + opdrachten)

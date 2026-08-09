@@ -8,7 +8,7 @@ langs — pending en rejected blijven onaangeroerd.
 """
 from __future__ import annotations
 
-from . import db, log
+from . import db, log, notify
 from .actuators import gmail_draft
 from .collectors.todo import adapter as todo_adapter
 
@@ -77,6 +77,8 @@ def main() -> int:
             )
             failed += 1
 
+    if failed:
+        notify.push("Annabel", f"{failed} actie(s) mislukt — kijk even in de app")
     logger.info("Klaar: %d gelukt, %d mislukt.", ok, failed)
     return 1 if failed else 0
 

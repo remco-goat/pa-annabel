@@ -12,6 +12,7 @@ from datetime import datetime
 
 from . import config, db, log
 from .brain import think
+from . import notify
 from .collectors import calendar as calendar_collector
 from .collectors import gmail as gmail_collector
 from .collectors import todo as todo_collector
@@ -137,6 +138,8 @@ def main() -> int:
         )
     if rows:
         db.insert("proposals", rows, returning=False)
+        n = notify.push("Annabel", f"{len(rows)} nieuwe voorstellen — {result['headline']}")
+        logger.info("  pushmelding naar %d apparaat/apparaten", n)
 
     db.update(
         "signals",

@@ -55,3 +55,6 @@ EFFORT = os.environ.get("ASSISTANT_EFFORT", "medium")  # low | medium | high | x
 LOOKBACK_HOURS = int(os.environ.get("LOOKBACK_HOURS", "36"))
 MAX_EMAILS = int(os.environ.get("MAX_EMAILS", "60"))
 DRY_RUN = os.environ.get("DRY_RUN", "false").lower() in ("1", "true", "yes")
+
+# --- Pushmeldingen ---------------------------------------------------------
+VAPID_PRIVATE_KEY = os.environ.get("VAPID_PRIVATE_KEY", "")

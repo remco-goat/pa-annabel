@@ -14,6 +14,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from . import config, db, log
+from . import notify
 from .apply import _execute
 from .brain import think
 from .collectors import todo as todo_collector
@@ -102,6 +103,12 @@ def main() -> int:
         {"status": "briefed"},
         id=f"in.({','.join(str(c['id']) for c in commands)})",
     )
+    fyi = [p for p in made if p["kind"] == "fyi"]
+    if fyi:
+        notify.push("Annabel", f"Antwoord klaar: {fyi[0]['title']}")
+    if failed:
+        notify.push("Annabel", f"{failed} opdracht(en) mislukt — kijk even in de app")
+
     db.finish_run(
         run_id, ok=failed == 0,
         stats={"opdrachten": len(commands), "voorstellen": len(rows),
