@@ -87,7 +87,9 @@ def main() -> int:
     except Exception as exc:
         logger.exception("brein faalde")
         db.finish_run(run_id, ok=False, stats=stats, error=str(exc))
-        raise
+        # Traceback staat in het logbestand; niet ook naar stderr —
+        # in GitHub Actions zijn die logs publiek.
+        raise SystemExit(1)
 
     stats["voorstellen"] = len(result["proposals"])
     stats["tokens"] = result.get("_usage", {})

@@ -41,7 +41,9 @@ def main() -> int:
     except Exception as exc:
         logger.exception("brein faalde op opdrachten")
         db.finish_run(run_id, ok=False, stats={"opdrachten": len(commands)}, error=str(exc))
-        raise
+        # Traceback staat in het logbestand; niet ook naar stderr —
+        # in GitHub Actions zijn die logs publiek.
+        raise SystemExit(1)
 
     by_external = {s["external_id"]: s["id"] for s in commands}
     rows = []
