@@ -2,15 +2,19 @@
 
     python -m agent.commands
 
-Bedoeld voor een korte cron-interval (elk half uur): typ je overdag iets in de
-app, dan hoeft dat niet op de ochtendrun te wachten. Kost niets als er geen
-opdrachten staan — er wordt dan geen Claude-call gedaan.
+Draait op korte cron-interval. Kost niets als er geen opdrachten staan.
+
+Opdrachten worden DIRECT uitgevoerd, zonder goedkeuringsronde: een opdracht die
+Remco zelf typt is al zijn goedkeuring. Dat kan omdat de uitvoerders alleen
+onschuldige dingen doen (taak aanmaken, concept klaarzetten) — nooit versturen,
+kopen of verwijderen. Alleen fyi-antwoorden blijven als kaart staan om te lezen.
 """
 from __future__ import annotations
 
 from datetime import datetime
 
 from . import config, db, log
+from .apply import _execute
 from .brain import think
 from .collectors import todo as todo_collector
 
@@ -67,8 +71,31 @@ def main() -> int:
                 },
             }
         )
-    if rows:
-        db.insert("proposals", rows, returning=False)
+    made = db.insert("proposals", rows) if rows else []
+
+    # Direct uitvoeren — behalve fyi, dat is een antwoord om te lezen.
+    done = failed = 0
+    for proposal in made:
+        if proposal["kind"] == "fyi":
+            continue
+        try:
+            outcome = _execute(proposal)
+            db.update(
+                "proposals",
+                {"status": "done", "result": outcome[:1000],
+                 "decided_at": db.now_iso(), "executed_at": db.now_iso()},
+                id=f"eq.{proposal['id']}",
+            )
+            logger.info("  direct uitgevoerd: %s — %s", proposal["title"], outcome)
+            done += 1
+        except Exception as exc:
+            db.update(
+                "proposals",
+                {"status": "failed", "result": str(exc)[:1000], "executed_at": db.now_iso()},
+                id=f"eq.{proposal['id']}",
+            )
+            logger.exception("direct uitvoeren mislukt: %s", proposal["title"])
+            failed += 1
 
     db.update(
         "signals",
@@ -76,8 +103,9 @@ def main() -> int:
         id=f"in.({','.join(str(c['id']) for c in commands)})",
     )
     db.finish_run(
-        run_id, ok=True,
-        stats={"opdrachten": len(commands), "voorstellen": len(rows), "tokens": result.get("_usage", {})},
+        run_id, ok=failed == 0,
+        stats={"opdrachten": len(commands), "voorstellen": len(rows),
+               "uitgevoerd": done, "mislukt": failed, "tokens": result.get("_usage", {})},
     )
     for p in result["proposals"]:
         logger.info("  [%s] %s: %s", p["urgency"], p["kind"], p["title"])

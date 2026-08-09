@@ -183,8 +183,10 @@ $("cmd-form").addEventListener("submit", async (e) => {
 // maar daar heeft het toetsenbord zelf een prima dicteerknop — dus daar
 // verbergen we onze eigen microfoon en wijzen we naar het toetsenbord.
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-const isStandaloneIOS = navigator.standalone === true;
-if (SR && !isStandaloneIOS) {
+// Op iOS (ook in Safari zelf) is browser-spraakherkenning onbetrouwbaar; daar
+// is de dicteerknop op het toetsenbord de betrouwbare route.
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+if (SR && !isIOS) {
   const mic = $("mic");
   mic.hidden = false;
   mic.addEventListener("click", () => {
