@@ -293,8 +293,48 @@ function renderBrief(brief) {
   const el = $("brief");
   if (!brief) return void (el.hidden = true);
   $("brief-headline").textContent = brief.headline;
-  $("brief-body").textContent = brief.body;
   $("brief-time").textContent = relativeDay(brief.created_at);
+
+  const body = $("brief-body");
+  body.textContent = "";
+
+  // Nieuwe briefs zijn een JSON-array van punten; oude zijn platte tekst.
+  let points = null;
+  try {
+    const parsed = JSON.parse(brief.body);
+    if (Array.isArray(parsed)) points = parsed;
+  } catch { /* platte tekst */ }
+
+  if (!points) {
+    body.textContent = brief.body;
+    el.hidden = false;
+    return;
+  }
+
+  // Afstrepen: tik op een punt = doorgestreept. Lokaal onthouden per brief,
+  // zodat het na verversen en herstart zo blijft staan.
+  const key = `struck-${brief.id}`;
+  const struck = new Set(JSON.parse(localStorage.getItem(key) || "[]"));
+
+  points.forEach((text, i) => {
+    const row = document.createElement("div");
+    row.className = "point" + (struck.has(i) ? " struck" : "");
+    row.setAttribute("role", "button");
+    row.tabIndex = 0;
+    row.textContent = text;
+    const toggle = () => {
+      tap();
+      if (struck.has(i)) struck.delete(i);
+      else struck.add(i);
+      row.classList.toggle("struck");
+      localStorage.setItem(key, JSON.stringify([...struck]));
+    };
+    row.addEventListener("click", toggle);
+    row.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); }
+    });
+    body.append(row);
+  });
   el.hidden = false;
 }
 

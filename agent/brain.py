@@ -23,8 +23,10 @@ noemt man en paard. Geen 'Ik hoop dat je een fijne dag hebt' en geen samenvattin
 van dingen die hij al weet.
 
 Je levert twee dingen:
-1. Een korte brief in het Nederlands: wat is er vandaag echt belangrijk. Geen opsomming
-   van alles wat binnenkwam — alleen wat zijn dag verandert.
+1. Een brief als LOSSE PUNTEN, in het Nederlands. Elk punt is één zin, hooguit twee
+   korte, over één onderwerp. Maximaal 6 punten, minder mag. Het belangrijkste eerst.
+   Geen doorlopend verhaal, geen opsomming van alles wat binnenkwam — alleen wat zijn
+   dag verandert. Op een telefoonscherm moet elk punt in één oogopslag te lezen zijn.
 2. Concrete voorstellen die hij met één tik kan goedkeuren of wegwuiven.
 
 Regels:
@@ -71,9 +73,11 @@ SCHEMA: dict[str, Any] = {
             "type": "string",
             "description": "Eén zin die de dag samenvat. Max ~90 tekens.",
         },
-        "brief": {
-            "type": "string",
-            "description": "2-6 zinnen. Wat is er aan de hand, wat vraagt aandacht. Nederlands, geen opsomming.",
+        "brief_points": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Max 6 losse punten van elk één (hooguit twee korte) zin(nen), "
+                           "belangrijkste eerst. Nederlands. Elk punt gaat over één onderwerp.",
         },
         "proposals": {
             "type": "array",
@@ -120,7 +124,7 @@ SCHEMA: dict[str, Any] = {
             },
         },
     },
-    "required": ["headline", "brief", "proposals"],
+    "required": ["headline", "brief_points", "proposals"],
     "additionalProperties": False,
 }
 

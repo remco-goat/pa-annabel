@@ -7,6 +7,7 @@ Supabase en wacht op jouw tik in de PWA. Uitvoeren doet agent.apply.
 """
 from __future__ import annotations
 
+import json
 from datetime import datetime
 
 from . import config, db, log
@@ -104,7 +105,8 @@ def main() -> int:
         {
             "run_id": run_id,
             "headline": result["headline"],
-            "body": result["brief"],
+            # Losse punten als JSON-array; de app rendert ze afstreepbaar.
+            "body": json.dumps(result["brief_points"], ensure_ascii=False),
         },
         returning=False,
     )
