@@ -563,8 +563,62 @@ document.addEventListener("visibilitychange", () => {
   if (!document.hidden && sb && !$("app").hidden) load();
 });
 
+// --- pushmeldingen ----------------------------------------------------------
+// Publieke helft van het VAPID-sleutelpaar; de agent ondertekent met de
+// private helft. Publiek zijn is de bedoeling.
+const VAPID_PUBLIC_KEY = "BA7PANCaS_tJKJSjLszBTugVViIcQVmpESPhvPlP5uwiAjnEx5pBpuVnCDmPWX0EXksfv6b2jt5shUY0qs11uVo";
+
+function vapidKeyBytes(base64url) {
+  const pad = "=".repeat((4 - (base64url.length % 4)) % 4);
+  const raw = atob((base64url + pad).replace(/-/g, "+").replace(/_/g, "/"));
+  return Uint8Array.from(raw, (c) => c.charCodeAt(0));
+}
+
+async function initNotifications() {
+  const btn = $("notif");
+  if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
+    return; // niet ondersteund (op iOS: alleen in de beginscherm-app, 16.4+)
+  }
+  const reg = await navigator.serviceWorker.ready;
+  const existing = await reg.pushManager.getSubscription();
+  if (existing && Notification.permission === "granted") {
+    btn.hidden = true;
+    return;
+  }
+  btn.hidden = false;
+  btn.addEventListener("click", async () => {
+    try {
+      const perm = await Notification.requestPermission();
+      if (perm !== "granted") {
+        toast("Meldingen geweigerd — aan te zetten via Instellingen > Annabel");
+        return;
+      }
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: vapidKeyBytes(VAPID_PUBLIC_KEY),
+      });
+      const { error } = await sb.from("signals").upsert(
+        {
+          source: "push_sub",
+          external_id: sub.endpoint,
+          kind: "push_sub",
+          title: "pushabonnement",
+          payload: sub.toJSON(),
+          status: "new",
+        },
+        { onConflict: "source,external_id" },
+      );
+      if (error) return fail(error.message);
+      btn.hidden = true;
+      toast("Meldingen staan aan");
+    } catch (e) {
+      toast(`Meldingen aanzetten mislukt: ${e.message}`);
+    }
+  });
+}
+
 initAuth();
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("sw.js").catch(() => {});
+  navigator.serviceWorker.register("sw.js").then(() => initNotifications()).catch(() => {});
 }
