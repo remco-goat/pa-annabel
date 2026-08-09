@@ -27,7 +27,7 @@
   <!-- Inloggen -->
   <section id="login" hidden>
     <div id="login-step-email">
-      <p class="muted">Vul je e-mailadres in; je krijgt een 6-cijferige code gemaild.</p>
+      <p class="muted">Vul je e-mailadres in; je krijgt een cijfercode.</p>
       <form id="login-form">
         <input id="email" type="email" inputmode="email" autocomplete="email"
                placeholder="jouw@email.nl" required>
@@ -38,7 +38,7 @@
       <p class="muted">Typ de code uit de mail. Dit hoeft maar één keer — daarna blijf je ingelogd.</p>
       <form id="code-form">
         <input id="code" type="text" inputmode="numeric" autocomplete="one-time-code"
-               pattern="[0-9]{6}" maxlength="6" placeholder="123456" required>
+               pattern="[0-9]{4,10}" maxlength="10" placeholder="12345678" required>
         <button type="submit" class="primary">Log in</button>
       </form>
       <button id="code-back" class="link-btn">Ander adres of nieuwe code</button>
