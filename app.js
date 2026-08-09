@@ -179,22 +179,34 @@ $("cmd-form").addEventListener("submit", async (e) => {
   loadCommands();
 });
 
-// Inspreken: op iOS werkt de dicteerknop van het toetsenbord altijd al; deze
-// microfoonknop is een extraatje voor browsers met het Web Speech API.
+// Inspreken. Op een iOS-beginscherm-app is het Web Speech API onbetrouwbaar,
+// maar daar heeft het toetsenbord zelf een prima dicteerknop — dus daar
+// verbergen we onze eigen microfoon en wijzen we naar het toetsenbord.
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-if (SR) {
+const isStandaloneIOS = navigator.standalone === true;
+if (SR && !isStandaloneIOS) {
   const mic = $("mic");
   mic.hidden = false;
   mic.addEventListener("click", () => {
     const rec = new SR();
     rec.lang = "nl-NL";
     rec.interimResults = false;
+    let gotResult = false;
     mic.classList.add("listening");
     rec.onresult = (e) => {
+      gotResult = true;
       $("cmd").value = e.results[0][0].transcript;
       $("cmd").focus();
     };
-    rec.onend = () => mic.classList.remove("listening");
+    rec.onend = () => {
+      mic.classList.remove("listening");
+      if (!gotResult) {
+        // Browser zegt spraak te kunnen maar levert niets: knop weg en
+        // doorverwijzen naar de dicteerknop van het toetsenbord.
+        mic.hidden = true;
+        toast("Gebruik de microfoontoets op je toetsenbord om in te spreken");
+      }
+    };
     rec.onerror = () => mic.classList.remove("listening");
     rec.start();
   });
