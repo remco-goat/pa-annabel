@@ -8,7 +8,7 @@ langs — pending en rejected blijven onaangeroerd.
 """
 from __future__ import annotations
 
-from . import db
+from . import db, log
 from .actuators import gmail_draft
 from .collectors.todo import adapter as todo_adapter
 
@@ -47,13 +47,16 @@ def _execute(proposal: dict) -> str:
     return f"onbekend type: {kind}"
 
 
+logger = log.setup("apply")
+
+
 def main() -> int:
     todo = db.approved_proposals()
     if not todo:
-        print("Niets goedgekeurd om uit te voeren.")
+        logger.info("Niets goedgekeurd om uit te voeren.")
         return 0
 
-    print(f"{len(todo)} goedgekeurde voorstellen uitvoeren")
+    logger.info("%d goedgekeurde voorstellen uitvoeren", len(todo))
     ok = failed = 0
     for proposal in todo:
         try:
@@ -63,18 +66,18 @@ def main() -> int:
                 {"status": "done", "result": result[:1000], "executed_at": db.now_iso()},
                 id=f"eq.{proposal['id']}",
             )
-            print(f"  ✓ {proposal['title']} — {result}")
+            logger.info("  ✓ %s — %s", proposal["title"], result)
             ok += 1
         except Exception as exc:
+            logger.exception("uitvoeren mislukt: %s", proposal["title"])
             db.update(
                 "proposals",
                 {"status": "failed", "result": str(exc)[:1000], "executed_at": db.now_iso()},
                 id=f"eq.{proposal['id']}",
             )
-            print(f"  ✗ {proposal['title']} — {exc}")
             failed += 1
 
-    print(f"Klaar: {ok} gelukt, {failed} mislukt.")
+    logger.info("Klaar: %d gelukt, %d mislukt.", ok, failed)
     return 1 if failed else 0
 
 

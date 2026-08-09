@@ -7,30 +7,30 @@ Supabase en wacht op jouw tik in de PWA. Uitvoeren doet agent.apply.
 """
 from __future__ import annotations
 
-import sys
-import traceback
 from datetime import datetime
 
-from . import config, db
+from . import config, db, log
 from .brain import think
 from .collectors import calendar as calendar_collector
 from .collectors import gmail as gmail_collector
 from .collectors import todo as todo_collector
 
 
+logger = log.setup("run")
+
+
 def _collect(name: str, fn):
     try:
         return fn()
-    except Exception as exc:
-        print(f"  ! collector {name} faalde: {exc}", file=sys.stderr)
-        traceback.print_exc()
+    except Exception:
+        logger.exception("collector %s faalde", name)
         return None
 
 
 def main() -> int:
     now = datetime.now(config.TZ)
     run_id = db.start_run()
-    print(f"Run {run_id} — {now:%Y-%m-%d %H:%M}")
+    logger.info("Run %s — %s", run_id, f"{now:%Y-%m-%d %H:%M}")
 
     stats: dict[str, int] = {}
 
@@ -45,22 +45,30 @@ def main() -> int:
         "todo": len(todo_signals),
         "documents": sum(len(d) for d in documents.values()),
     }
-    print(f"  verzameld: {stats}")
+    logger.info("  verzameld: %s", stats)
 
     all_signals = mail_signals + cal_signals + todo_signals
     if not all_signals:
         db.finish_run(run_id, ok=True, stats=stats | {"note": "niets verzameld"})
-        print("  niets te doen.")
+        logger.info("  niets te doen.")
         return 0
 
     # Dedupe: alleen wat we nog niet eerder hebben gezien gaat naar het brein.
     fresh = db.record_signals(all_signals, persist=not config.DRY_RUN)
     stats["nieuw"] = len(fresh)
-    print(f"  nieuw sinds vorige run: {len(fresh)}")
+    logger.info("  nieuw sinds vorige run: %d", len(fresh))
+
+    # Opdrachten uit de app staan al in de database (de PWA schrijft ze daar
+    # rechtstreeks in) en tellen dus niet als collector-signaal — apart ophalen.
+    commands = db.select("signals", source="eq.command", status="eq.new")
+    if commands:
+        stats["opdrachten"] = len(commands)
+        logger.info("  opdrachten uit de app: %d", len(commands))
+        fresh = fresh + commands
 
     if not fresh:
         db.finish_run(run_id, ok=True, stats=stats | {"note": "geen nieuwe signalen"})
-        print("  geen nieuwe signalen — geen brief.")
+        logger.info("  geen nieuwe signalen — geen brief.")
         return 0
 
     # Bijlagen alleen meesturen voor mails die daadwerkelijk nieuw zijn.
@@ -76,17 +84,18 @@ def main() -> int:
     try:
         result = think(fresh, docs_for_fresh, open_tasks, now)
     except Exception as exc:
+        logger.exception("brein faalde")
         db.finish_run(run_id, ok=False, stats=stats, error=str(exc))
         raise
 
     stats["voorstellen"] = len(result["proposals"])
     stats["tokens"] = result.get("_usage", {})
-    print(f"  brief: {result['headline']}")
-    print(f"  voorstellen: {len(result['proposals'])}")
+    logger.info("  brief: %s", result["headline"])
+    logger.info("  voorstellen: %d", len(result["proposals"]))
 
     if config.DRY_RUN:
         for p in result["proposals"]:
-            print(f"    [{p['urgency']}] {p['kind']}: {p['title']}")
+            logger.info("    [%s] %s: %s", p["urgency"], p["kind"], p["title"])
         db.finish_run(run_id, ok=True, stats=stats | {"dry_run": True})
         return 0
 
@@ -132,7 +141,7 @@ def main() -> int:
     )
 
     db.finish_run(run_id, ok=True, stats=stats)
-    print("  klaar. Open de app om goed te keuren.")
+    logger.info("  klaar. Open de app om goed te keuren.")
     return 0
 
 

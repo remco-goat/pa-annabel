@@ -94,12 +94,18 @@ crontab -e
 ```
 
 ```
-0 7 * * * cd ~/Projects/assistant && .venv/bin/python -m agent.apply >> logs/apply.log 2>&1
-5 7 * * * cd ~/Projects/assistant && .venv/bin/python -m agent.run   >> logs/run.log 2>&1
+# ochtendbrief
+5 7 * * * cd ~/Projects/assistant && .venv/bin/python -m agent.run
+# elk half uur: goedgekeurde voorstellen uitvoeren + opdrachten uit de app verwerken
+*/30 * * * * cd ~/Projects/assistant && .venv/bin/python -m agent.apply && .venv/bin/python -m agent.commands
 ```
 
-`apply` draait vóór `run`: eerst uitvoeren wat je gisteren goedkeurde, dan de
-nieuwe brief maken. (`mkdir logs` even doen.)
+De halfuur-regel kost niets als er niets te doen is: `apply` doet geen
+Claude-call, en `commands` alleen als er echt een opdracht staat. Zo is een
+goedkeuring of opdracht binnen een half uur verwerkt in plaats van morgenochtend.
+
+Alle runners loggen zelf naar `logs/<naam>.log` (met timestamps en volledige
+tracebacks), dus cron hoeft niets te redirecten.
 
 Slaapt je Mac om 7:00, gebruik dan `launchd` in plaats van cron — die haalt een
 gemiste run in zodra de Mac wakker wordt. De agent kijkt standaard 36 uur terug,

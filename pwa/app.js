@@ -1,4 +1,7 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+// supabase-js wordt lokaal meegeleverd (vendor/supabase.js) in plaats van via
+// een CDN geladen: geen derde partij die code in de app kan wijzigen, en de
+// CSP kan alle externe scripts blokkeren.
+const { createClient } = window.supabase;
 
 const cfg = window.ASSISTANT_CONFIG || {};
 const $ = (id) => document.getElementById(id);
@@ -88,25 +91,127 @@ function onSignedIn(session) {
   load();
 }
 
+// Inloggen met een 6-cijferige code i.p.v. een magic link: op iOS opent een
+// mail-link altijd Safari en nooit de geïnstalleerde app, dus de sessie zou
+// op de verkeerde plek belanden. Een code typ je in de app zelf.
+let pendingEmail = "";
+
 $("login-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const btn = e.target.querySelector("button");
   btn.disabled = true;
   $("login-msg").textContent = "Versturen…";
+  pendingEmail = $("email").value.trim();
   const { error } = await sb.auth.signInWithOtp({
-    email: $("email").value.trim(),
+    email: pendingEmail,
     // Registratie staat uit in Supabase; dit voorkomt dat de aanvraag het
     // alsnog probeert en geeft een duidelijke fout bij een onbekend adres.
-    options: { emailRedirectTo: window.location.href, shouldCreateUser: false },
+    options: { shouldCreateUser: false },
   });
   btn.disabled = false;
-  $("login-msg").textContent = error
-    ? `Mislukt: ${error.message}`
-    : "Check je mail. De link opent deze app.";
+  if (error) {
+    $("login-msg").textContent = `Mislukt: ${error.message}`;
+    return;
+  }
+  $("login-step-email").hidden = true;
+  $("login-step-code").hidden = false;
+  $("login-msg").textContent = "Code verstuurd. Kijk in je mail.";
+  $("code").focus();
+});
+
+$("code-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const btn = e.target.querySelector("button");
+  btn.disabled = true;
+  $("login-msg").textContent = "Controleren…";
+  const { error } = await sb.auth.verifyOtp({
+    email: pendingEmail,
+    token: $("code").value.trim(),
+    type: "email",
+  });
+  btn.disabled = false;
+  if (error) {
+    $("login-msg").textContent = `Code klopt niet of is verlopen: ${error.message}`;
+  }
+  // Bij succes vuurt onAuthStateChange en schakelt de app zelf om.
+});
+
+$("code-back").addEventListener("click", () => {
+  $("login-step-code").hidden = true;
+  $("login-step-email").hidden = false;
+  $("login-msg").textContent = "";
 });
 
 $("logout").addEventListener("click", () => sb.auth.signOut());
 $("refresh").addEventListener("click", () => load());
+
+// --- opdrachten -------------------------------------------------------------
+
+$("cmd-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const text = $("cmd").value.trim();
+  if (!text) return;
+  $("cmd").value = "";
+  tap();
+  const { error } = await sb.from("signals").insert({
+    source: "command",
+    external_id: crypto.randomUUID(),
+    kind: "command",
+    title: text,
+    occurred_at: new Date().toISOString(),
+    payload: {},
+  });
+  if (error) return fail(error.message);
+  toast("Klaargezet voor Annabel");
+  loadCommands();
+});
+
+// Inspreken: op iOS werkt de dicteerknop van het toetsenbord altijd al; deze
+// microfoonknop is een extraatje voor browsers met het Web Speech API.
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+if (SR) {
+  const mic = $("mic");
+  mic.hidden = false;
+  mic.addEventListener("click", () => {
+    const rec = new SR();
+    rec.lang = "nl-NL";
+    rec.interimResults = false;
+    mic.classList.add("listening");
+    rec.onresult = (e) => {
+      $("cmd").value = e.results[0][0].transcript;
+      $("cmd").focus();
+    };
+    rec.onend = () => mic.classList.remove("listening");
+    rec.onerror = () => mic.classList.remove("listening");
+    rec.start();
+  });
+}
+
+async function loadCommands() {
+  const { data, error } = await sb.from("signals").select("id,title,first_seen_at")
+    .eq("source", "command").eq("status", "new")
+    .order("first_seen_at", { ascending: true });
+  if (error) return fail(error.message);
+
+  const wrap = $("cmd-open");
+  wrap.textContent = "";
+  for (const c of data) {
+    const row = document.createElement("div");
+    row.className = "cmd-row";
+    const text = document.createElement("span");
+    text.textContent = c.title;
+    const cancel = document.createElement("button");
+    cancel.className = "link-btn";
+    cancel.textContent = "✕";
+    cancel.setAttribute("aria-label", "Opdracht intrekken");
+    cancel.addEventListener("click", async () => {
+      await sb.from("signals").update({ status: "ignored" }).eq("id", c.id);
+      loadCommands();
+    });
+    row.append(text, cancel);
+    wrap.append(row);
+  }
+}
 
 // --- data -----------------------------------------------------------------
 
@@ -116,7 +221,7 @@ async function load() {
   const since = new Date();
   since.setHours(0, 0, 0, 0);
 
-  const [briefRes, openRes, doneRes] = await Promise.all([
+  const [briefRes, openRes, doneRes, queuedRes] = await Promise.all([
     sb.from("briefs").select("*").order("created_at", { ascending: false }).limit(1),
     sb.from("proposals").select(SELECT)
       .in("status", ["pending", "snoozed", "failed"])
@@ -125,13 +230,33 @@ async function load() {
       .in("status", ["done", "rejected"])
       .gte("decided_at", since.toISOString())
       .order("decided_at", { ascending: false }),
+    sb.from("proposals").select("id,title")
+      .eq("status", "approved")
+      .order("decided_at", { ascending: true }),
   ]);
 
-  for (const r of [briefRes, openRes, doneRes]) if (r.error) return fail(r.error.message);
+  for (const r of [briefRes, openRes, doneRes, queuedRes]) if (r.error) return fail(r.error.message);
 
   renderBrief(briefRes.data[0]);
   renderOpen(openRes.data.filter(visibleNow));
   renderHistory(doneRes.data);
+  renderQueue(queuedRes.data);
+  loadCommands();
+}
+
+// Goedgekeurd maar nog niet uitgevoerd: laat zien dat het onderweg is, zodat
+// goedkeuren nooit voelt als iets dat in het niets verdwijnt.
+function renderQueue(items) {
+  const wrap = $("approved-queue");
+  wrap.textContent = "";
+  for (const p of items) {
+    const row = document.createElement("div");
+    row.className = "queue-row";
+    const text = document.createElement("span");
+    text.textContent = p.title;
+    row.append(text);
+    wrap.append(row);
+  }
 }
 
 function visibleNow(p) {
@@ -170,6 +295,12 @@ function renderOpen(items) {
   $("empty").hidden = items.length > 0;
   $("badge").textContent = open.length;
   $("badge").hidden = open.length === 0;
+
+  // Badge op het app-icoon (iOS 16.4+ voor apps op het beginscherm).
+  if ("setAppBadge" in navigator) {
+    if (open.length) navigator.setAppBadge(open.length).catch(() => {});
+    else navigator.clearAppBadge().catch(() => {});
+  }
 
   if (failed.length) {
     list.append(groupLabel(`Mislukt (${failed.length})`, "failed"));
