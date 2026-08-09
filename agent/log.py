@@ -7,6 +7,7 @@ de console blijft leesbaar kort. Cron hoeft dus niets meer te redirecten.
 from __future__ import annotations
 
 import logging
+import os
 import sys
 from logging.handlers import RotatingFileHandler
 
@@ -31,6 +32,10 @@ def setup(name: str) -> logging.Logger:
 
     console = logging.StreamHandler(sys.stdout)
     console.setFormatter(logging.Formatter("%(message)s"))
+    # In CI (GitHub Actions) zijn de logs van een publieke repo publiek —
+    # daar horen geen mailonderwerpen of brief-teksten in. Alleen problemen.
+    if os.environ.get("CI"):
+        console.setLevel(logging.WARNING)
     root.addHandler(console)
 
     # Bibliotheken die op INFO elke HTTP-call loggen — alleen echte problemen.
