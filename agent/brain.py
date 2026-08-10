@@ -62,6 +62,9 @@ Die hebben voorrang en krijgen ALTIJD minstens één voorstel:
 - Heeft een opdracht een veld 'in_antwoord_op', dan is het Remco's reactie op een
   eerdere kaart of vraag van jou. Combineer zijn antwoord met die context en handel
   het oorspronkelijke verzoek nu volledig af — stel niet nogmaals dezelfde vraag.
+- Boodschappen ("zet melk en bakpapier in picnic", "koffiebonen zijn op") → één
+  groceries-voorstel met de items los in grocery_items. Alleen mandje vullen;
+  bestellen doet Remco zelf in de Picnic-app.
 - Een zoek/doorstuur-verzoek ("zoek X en stuur door naar Y") → kijk in de
   <mail_zoekresultaten>. Staat de juiste mail ertussen, maak een forward_email-voorstel
   met dat message_id en het e-mailadres van de ontvanger (haal dat uit de zoekresultaten
@@ -94,7 +97,7 @@ SCHEMA: dict[str, Any] = {
                 "properties": {
                     "kind": {
                         "type": "string",
-                        "enum": ["create_task", "draft_reply", "forward_email", "buy", "reminder", "fyi"],
+                        "enum": ["create_task", "draft_reply", "forward_email", "groceries", "buy", "reminder", "fyi"],
                     },
                     "title": {"type": "string", "description": "Korte actiegerichte titel."},
                     "detail": {
@@ -126,11 +129,17 @@ SCHEMA: dict[str, Any] = {
                         "type": "string",
                         "description": "Bij forward_email: het message_id uit de mail-zoekresultaten. Anders leeg.",
                     },
+                    "grocery_items": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Bij groceries: losse boodschappen, elk kort en zoekbaar "
+                                       "('halfvolle melk', 'bakpapier'). Anders leeg.",
+                    },
                 },
                 "required": [
                     "kind", "title", "detail", "urgency", "source", "source_id",
                     "task_title", "task_due", "draft_to", "draft_subject",
-                    "draft_body", "thread_id", "forward_message_id",
+                    "draft_body", "thread_id", "forward_message_id", "grocery_items",
                 ],
                 "additionalProperties": False,
             },

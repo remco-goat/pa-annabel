@@ -62,3 +62,13 @@ DRY_RUN = os.environ.get("DRY_RUN", "false").lower() in ("1", "true", "yes")
 
 # --- Pushmeldingen ---------------------------------------------------------
 VAPID_PRIVATE_KEY = os.environ.get("VAPID_PRIVATE_KEY", "")
+
+# --- Picnic -----------------------------------------------------------------
+def _picnic_token() -> str:
+    env = os.environ.get("PICNIC_AUTH_TOKEN", "").strip()
+    if env:
+        return env
+    f = ROOT / ".secrets" / "picnic_token"
+    return f.read_text().strip() if f.exists() else ""
+
+PICNIC_AUTH_TOKEN = _picnic_token()

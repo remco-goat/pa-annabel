@@ -37,6 +37,13 @@ def _execute(proposal: dict) -> str:
             note=action.get("draft_body", ""),
         )
 
+    if kind == "groceries":
+        from .actuators.picnic import add_groceries
+        items = action.get("grocery_items") or []
+        if not items:
+            raise ValueError("geen boodschappenitems in het voorstel")
+        return add_groceries(items)
+
     if kind == "create_task":
         return todo_adapter().create(
             action.get("task_title") or proposal["title"],

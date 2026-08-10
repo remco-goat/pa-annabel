@@ -86,6 +86,7 @@ def main() -> int:
                     "draft_body": p.get("draft_body", ""),
                     "thread_id": p.get("thread_id", ""),
                     "forward_message_id": p.get("forward_message_id", ""),
+                    "grocery_items": p.get("grocery_items", []),
                     "source": "command",
                 },
             }
