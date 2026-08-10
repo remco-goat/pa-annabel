@@ -38,11 +38,20 @@ def _execute(proposal: dict) -> str:
         )
 
     if kind == "groceries":
-        from .actuators.picnic import add_groceries
         items = action.get("grocery_items") or []
         if not items:
             raise ValueError("geen boodschappenitems in het voorstel")
-        return add_groceries(items)
+        try:
+            from .actuators.picnic import add_groceries
+            return add_groceries(items)
+        except Exception as exc:
+            # Picnic-koppeling (nog) niet beschikbaar → boodschappenlijst als
+            # taak, zodat de opdracht nooit in het niets verdwijnt.
+            url = todo_adapter().create(
+                "Boodschappen: " + ", ".join(items),
+                note=f"Picnic-mandje vullen lukte niet ({exc}); handmatig bestellen.",
+            )
+            return f"Picnic niet beschikbaar — als taak op je lijst gezet: {url}"
 
     if kind == "create_task":
         return todo_adapter().create(
