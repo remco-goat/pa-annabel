@@ -15,6 +15,10 @@ on:
         default: "tick"
         type: choice
         options: [run, tick]
+      force:
+        description: "brief ook buiten het NL-uurvenster (07-19) draaien"
+        default: false
+        type: boolean
 
 concurrency:
   group: annabel
@@ -42,6 +46,7 @@ jobs:
             ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}
             TODOIST_TOKEN=${{ secrets.TODOIST_TOKEN }}
             VAPID_PRIVATE_KEY=${{ secrets.VAPID_PRIVATE_KEY }}
+            PICNIC_AUTH_TOKEN=${{ secrets.PICNIC_AUTH_TOKEN }}
             TODO_PROVIDER=todoist
             ASSISTANT_MODEL=claude-opus-5
             ASSISTANT_EFFORT=medium
@@ -55,6 +60,12 @@ jobs:
 
       - name: Volledige run (brief + voorstellen)
         if: github.event.schedule == '0 5-17 * * *' || inputs.job == 'run'
+        env:
+          # Guard in agent/run.py slaat geplande runs buiten 07-19 NL over.
+          # pg_cron triggert óók via workflow_dispatch, dus mens/scheduler is
+          # hier niet te onderscheiden: altijd "1", tenzij een mens bewust
+          # forceert met -f force=true.
+          ANNABEL_SCHEDULED: ${{ inputs.force == true && '0' || '1' }}
         run: python -m agent.run
 
       - name: Tick (uitvoeren + opdrachten)

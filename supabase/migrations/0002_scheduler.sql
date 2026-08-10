@@ -7,6 +7,11 @@
 --   Repository access : Only select repositories -> remco-goat/pa-annabel
 --   Permissions       : Actions -> Read and write   (verder niets)
 --   Expiration        : 1 jaar
+--
+-- LET OP: het brief-venster is verruimd naar '0 5-18 * * *'. Draai deze
+-- migratie opnieuw om dat actief te maken (het script is herdraaibaar).
+-- De uurvenster-guard in agent/run.py werkt ook zonder herdraaien; alleen
+-- het extra winteruur (18 UTC = 19:00 NL) mist dan nog.
 
 create extension if not exists pg_cron;
 create extension if not exists pg_net;
@@ -23,10 +28,15 @@ begin
 exception when others then null;
 end $$;
 
--- Elk uur de brief, 05-17 UTC = 07-19 NL in de zomer (winter: 08-20 NL).
+-- Elk uur de brief, 05-18 UTC: bewust één uur ruimer dan het gewenste
+-- NL-venster 07-19, omdat pg_cron geen tijdzones/zomertijd kent. De guard
+-- in agent/run.py (ANNABEL_SCHEDULED=1) filtert de randen weg:
+--   zomer : 05 UTC = 07 NL draait,  18 UTC = 20 NL wordt overgeslagen
+--   winter: 05 UTC = 06 NL wordt overgeslagen,  18 UTC = 19 NL draait
+-- Zo klopt het venster 07-19 NL het hele jaar.
 select cron.schedule(
   'annabel-brief',
-  '0 5-17 * * *',
+  '0 5-18 * * *',
   $$
   select net.http_post(
     url     := 'https://api.github.com/repos/remco-goat/pa-annabel/actions/workflows/annabel.yml/dispatches',

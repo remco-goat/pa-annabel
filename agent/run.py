@@ -8,6 +8,7 @@ Supabase en wacht op jouw tik in de PWA. Uitvoeren doet agent.apply.
 from __future__ import annotations
 
 import json
+import os
 from datetime import datetime
 
 from . import config, db, log
@@ -31,6 +32,15 @@ def _collect(name: str, fn):
 
 def main() -> int:
     now = datetime.now(config.TZ)
+
+    # Uurvenster-guard: de scheduler (pg_cron) kent geen tijdzones en vuurt in
+    # UTC iets ruimer dan het gewenste NL-venster. Bij geplande runs bepalen we
+    # hier zelf of het lokale uur binnen 07:00-19:00 valt; handmatige runs en
+    # tests (zonder ANNABEL_SCHEDULED=1) draaien altijd door.
+    if os.environ.get("ANNABEL_SCHEDULED") == "1" and not 7 <= now.hour <= 19:
+        logger.info("buiten het brief-venster (%d:00 NL) — overgeslagen", now.hour)
+        return 0
+
     run_id = db.start_run()
     logger.info("Run %s — %s", run_id, f"{now:%Y-%m-%d %H:%M}")
 
