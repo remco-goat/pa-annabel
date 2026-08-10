@@ -479,6 +479,14 @@ function card(p, { failed = false } = {}) {
   actions.className = "actions";
   const isTodoTask = p.signal?.source === "todo" && p.signal?.external_id;
 
+  if (p.kind === "fyi" && !failed) {
+    // Een antwoord of vraag van Annabel: direct beantwoordbaar.
+    el.append(replyForm(p, "Antwoord Annabel…"));
+    actions.append(button("OK", "", () => decide(p, "done", "Gelezen")));
+    el.append(actions);
+    return el;
+  }
+
   if (failed) {
     actions.append(
       button("Opnieuw proberen", "primary", () => decide(p, "approved", "Staat weer klaar")),
@@ -507,7 +515,67 @@ function card(p, { failed = false } = {}) {
     );
   }
   el.append(actions);
+
+  // Op elke kaart kun je reageren ("maak de tekst korter", "doe morgen maar"):
+  // je reactie gaat mét de kaart als context naar Annabel.
+  const replyLink = document.createElement("button");
+  replyLink.className = "link-btn reply-link";
+  replyLink.textContent = "Reageer";
+  const form = replyForm(p, "Reactie voor Annabel…");
+  form.hidden = true;
+  replyLink.addEventListener("click", () => {
+    form.hidden = !form.hidden;
+    if (!form.hidden) form.querySelector("input").focus();
+  });
+  el.append(replyLink, form);
   return el;
+}
+
+// Reactieformulier: slaat het antwoord op als opdracht mét de kaart als context,
+// zodat Annabel weet waar het antwoord bij hoort.
+function replyForm(p, placeholder) {
+  const form = document.createElement("form");
+  form.className = "reply-form";
+  const input = document.createElement("input");
+  input.type = "text";
+  input.placeholder = placeholder;
+  input.maxLength = 500;
+  const send = document.createElement("button");
+  send.type = "submit";
+  send.className = "primary";
+  send.textContent = "↑";
+  send.setAttribute("aria-label", "Versturen");
+  form.append(input, send);
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const text = input.value.trim();
+    if (!text) return;
+    tap();
+    const { error } = await sb.from("signals").insert({
+      source: "command",
+      external_id: crypto.randomUUID(),
+      kind: "command",
+      title: text,
+      occurred_at: new Date().toISOString(),
+      payload: {
+        context: { vraag: p.title, detail: p.detail, kind: p.kind },
+        reply_to_proposal: p.id,
+      },
+    });
+    if (error) return fail(error.message);
+    // De kaart is hiermee afgehandeld: het gesprek loopt verder via de opdracht.
+    if (p.kind === "fyi") {
+      await sb.from("proposals").update({
+        status: "done",
+        result: `beantwoord: ${text}`,
+        decided_at: new Date().toISOString(),
+      }).eq("id", p.id);
+    }
+    toast("Doorgegeven aan Annabel");
+    load();
+  });
+  return form;
 }
 
 function button(label, cls, onClick) {
