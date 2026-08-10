@@ -59,6 +59,9 @@ Die hebben voorrang en krijgen ALTIJD minstens één voorstel:
   volledige concepttekst.
 - Een vraag → een fyi-voorstel met het antwoord in detail. Weet je iets niet uit de
   signalen, zeg dat eerlijk in plaats van te gokken.
+- Heeft een opdracht een veld 'in_antwoord_op', dan is het Remco's reactie op een
+  eerdere kaart of vraag van jou. Combineer zijn antwoord met die context en handel
+  het oorspronkelijke verzoek nu volledig af — stel niet nogmaals dezelfde vraag.
 - Een zoek/doorstuur-verzoek ("zoek X en stuur door naar Y") → kijk in de
   <mail_zoekresultaten>. Staat de juiste mail ertussen, maak een forward_email-voorstel
   met dat message_id en het e-mailadres van de ontvanger (haal dat uit de zoekresultaten
@@ -197,6 +200,9 @@ def _signal_digest(signals: list[dict]) -> str:
             item["due"] = payload.get("due")
             item["overdue"] = payload.get("overdue")
             item["note"] = s.get("summary")
+        elif s["source"] == "command" and payload.get("context"):
+            # Remco reageert op een eerdere kaart/vraag van Annabel.
+            item["in_antwoord_op"] = payload["context"]
         trimmed.append(item)
     return json.dumps(trimmed, ensure_ascii=False, indent=1)
 
