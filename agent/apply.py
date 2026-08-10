@@ -30,6 +30,13 @@ def _execute(proposal: dict) -> str:
             thread_id=action.get("thread_id", ""),
         )
 
+    if kind == "forward_email":
+        return gmail_draft.forward_as_draft(
+            message_id=action.get("forward_message_id", ""),
+            to=action.get("draft_to", ""),
+            note=action.get("draft_body", ""),
+        )
+
     if kind == "create_task":
         return todo_adapter().create(
             action.get("task_title") or proposal["title"],

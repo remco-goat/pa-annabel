@@ -132,6 +132,7 @@ def main() -> int:
                     "draft_subject": p.get("draft_subject", ""),
                     "draft_body": p.get("draft_body", ""),
                     "thread_id": p.get("thread_id", ""),
+                    "forward_message_id": p.get("forward_message_id", ""),
                     "source": p.get("source", ""),
                 },
             }

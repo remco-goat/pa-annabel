@@ -96,6 +96,34 @@ def _attachments(svc, msg_id: str, payload: dict) -> list[dict[str, Any]]:
     return out
 
 
+def search(query: str, limit: int = 6) -> list[dict]:
+    """Zoekt in de HELE mailbox (Gmail-zoeksyntaxis) — voor opdrachten als
+    'zoek het opleverrapport'. Geeft metadata + bijlagenamen terug, geen bodies."""
+    svc = gmail_service()
+    res = svc.users().messages().list(userId="me", q=query, maxResults=limit).execute()
+    hits = []
+    for ref in res.get("messages", []):
+        msg = svc.users().messages().get(userId="me", id=ref["id"], format="full").execute()
+        payload = msg.get("payload", {})
+        attachments = [
+            part.get("filename")
+            for part in _walk(payload)
+            if part.get("filename") and (part.get("body") or {}).get("attachmentId")
+        ]
+        hits.append(
+            {
+                "message_id": ref["id"],
+                "from": _header(payload, "From"),
+                "to": _header(payload, "To"),
+                "date": _header(payload, "Date"),
+                "subject": _header(payload, "Subject"),
+                "snippet": (msg.get("snippet") or "")[:200],
+                "attachments": attachments,
+            }
+        )
+    return hits
+
+
 def collect() -> tuple[list[dict], dict[str, list[dict]]]:
     """Geeft (signalen, documenten-per-mail) terug."""
     svc = gmail_service()

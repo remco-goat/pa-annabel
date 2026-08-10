@@ -41,8 +41,25 @@ def main() -> int:
         for s in todo_signals
     ]
 
+    # Mail-zoekcontext: eerst kort bepalen óf en wát er gezocht moet worden,
+    # dan de hele mailbox doorzoeken en de treffers aan het brein geven.
+    mail_hits: list[dict] = []
     try:
-        result = think(commands, {}, open_tasks, datetime.now(config.TZ), commands_only=True, model=config.MODEL_COMMANDS)
+        from .brain import mail_queries
+        from .collectors.gmail import search as gmail_search
+        for q in mail_queries(commands, model=config.MODEL_COMMANDS):
+            logger.info("  mail-zoekopdracht: %s", q)
+            for hit in gmail_search(q, limit=5):
+                if hit["message_id"] not in {h["message_id"] for h in mail_hits}:
+                    mail_hits.append(hit)
+        if mail_hits:
+            logger.info("  %d mail-treffer(s) meegegeven aan het brein", len(mail_hits))
+    except Exception:
+        logger.exception("mail-zoeken mislukt — opdrachten gaan door zonder zoekresultaten")
+
+    try:
+        result = think(commands, {}, open_tasks, datetime.now(config.TZ), commands_only=True,
+                       model=config.MODEL_COMMANDS, mail_hits=mail_hits)
     except Exception as exc:
         logger.exception("brein faalde op opdrachten")
         db.finish_run(run_id, ok=False, stats={"opdrachten": len(commands)}, error=str(exc))
@@ -68,6 +85,7 @@ def main() -> int:
                     "draft_subject": p.get("draft_subject", ""),
                     "draft_body": p.get("draft_body", ""),
                     "thread_id": p.get("thread_id", ""),
+                    "forward_message_id": p.get("forward_message_id", ""),
                     "source": "command",
                 },
             }

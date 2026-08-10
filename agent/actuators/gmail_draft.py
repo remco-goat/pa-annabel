@@ -6,9 +6,32 @@ terug te draaien, een verstuurde mail niet.
 from __future__ import annotations
 
 import base64
+import email
+import email.policy
 from email.message import EmailMessage
 
 from ..google_auth import gmail_service
+
+
+def forward_as_draft(*, message_id: str, to: str, note: str = "") -> str:
+    """Zet een bestaande mail als CONCEPT-doorstuur klaar, met het originele
+    bericht (inclusief bijlagen) als rfc822-bijlage. Verstuurt niets."""
+    svc = gmail_service()
+    orig = svc.users().messages().get(userId="me", id=message_id, format="raw").execute()
+    raw_bytes = base64.urlsafe_b64decode(orig["raw"])
+    orig_msg = email.message_from_bytes(raw_bytes, policy=email.policy.default)
+
+    fwd = EmailMessage()
+    if to:
+        fwd["To"] = to
+    subject = orig_msg.get("Subject", "") or "(geen onderwerp)"
+    fwd["Subject"] = subject if subject.lower().startswith("fwd:") else f"Fwd: {subject}"
+    fwd.set_content(note or "Zie het doorgestuurde bericht in de bijlage.")
+    fwd.add_attachment(orig_msg)   # message/rfc822 — bijlagen reizen mee
+
+    raw = base64.urlsafe_b64encode(fwd.as_bytes()).decode()
+    draft = svc.users().drafts().create(userId="me", body={"message": {"raw": raw}}).execute()
+    return f"doorstuur-concept klaargezet: https://mail.google.com/mail/u/0/#drafts/{draft['id']}"
 
 
 def send_message(*, to: str, subject: str, body: str, thread_id: str = "") -> str:
