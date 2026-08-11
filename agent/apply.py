@@ -37,6 +37,13 @@ def _execute(proposal: dict) -> str:
             note=action.get("draft_body", ""),
         )
 
+    if kind == "email_action":
+        from .actuators.gmail_actions import apply_email_action
+        return apply_email_action(
+            action.get("email_action", ""),
+            action.get("email_message_ids") or [],
+        )
+
     if kind == "groceries":
         items = action.get("grocery_items") or []
         if not items:

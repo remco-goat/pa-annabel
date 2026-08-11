@@ -65,6 +65,11 @@ Die hebben voorrang en krijgen ALTIJD minstens één voorstel:
 - Boodschappen ("zet melk en bakpapier in picnic", "koffiebonen zijn op") → één
   groceries-voorstel met de items los in grocery_items. Alleen mandje vullen;
   bestellen doet Remco zelf in de Picnic-app.
+- Mailbox-beheer ("zet die nieuwsbrieven op gelezen", "archiveer alles van X",
+  "gooi die mail weg") → een email_action-voorstel met de juiste actie en de
+  message_id's uit de zoekresultaten of signalen. 'Weggooien' = trash (prullenbak,
+  30 dagen terug te halen); definitief wissen kun je niet. Zeg in detail om welke
+  en hoeveel mails het gaat, zodat Remco het kan controleren.
 - Een zoek/doorstuur-verzoek ("zoek X en stuur door naar Y") → kijk in de
   <mail_zoekresultaten>. Staat de juiste mail ertussen, maak een forward_email-voorstel
   met dat message_id en het e-mailadres van de ontvanger (haal dat uit de zoekresultaten
@@ -97,7 +102,7 @@ SCHEMA: dict[str, Any] = {
                 "properties": {
                     "kind": {
                         "type": "string",
-                        "enum": ["create_task", "draft_reply", "forward_email", "groceries", "buy", "reminder", "fyi"],
+                        "enum": ["create_task", "draft_reply", "forward_email", "groceries", "email_action", "buy", "reminder", "fyi"],
                     },
                     "title": {"type": "string", "description": "Korte actiegerichte titel."},
                     "detail": {
@@ -129,6 +134,16 @@ SCHEMA: dict[str, Any] = {
                         "type": "string",
                         "description": "Bij forward_email: het message_id uit de mail-zoekresultaten. Anders leeg.",
                     },
+                    "email_action": {
+                        "type": "string",
+                        "enum": ["", "mark_read", "mark_unread", "archive", "trash"],
+                        "description": "Bij email_action: wat er met de mails moet gebeuren. Anders leeg.",
+                    },
+                    "email_message_ids": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Bij email_action: de message_id's (uit zoekresultaten of signalen). Anders leeg.",
+                    },
                     "grocery_items": {
                         "type": "array",
                         "items": {"type": "string"},
@@ -139,7 +154,7 @@ SCHEMA: dict[str, Any] = {
                 "required": [
                     "kind", "title", "detail", "urgency", "source", "source_id",
                     "task_title", "task_due", "draft_to", "draft_subject",
-                    "draft_body", "thread_id", "forward_message_id", "grocery_items",
+                    "draft_body", "thread_id", "forward_message_id", "grocery_items", "email_action", "email_message_ids",
                 ],
                 "additionalProperties": False,
             },
