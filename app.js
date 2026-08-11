@@ -403,8 +403,9 @@ function renderHistory(items) {
 
     row.append(mark, text);
 
-    if (p.status === "done" && /^https?:\/\//.test(p.result || "")) {
-      row.append(link(p.result, "openen"));
+    const m = (p.result || "").match(/https?:\/\/\S+/);
+    if (p.status === "done" && m) {
+      row.append(link(m[0], "openen"));
     }
     list.append(row);
   }
