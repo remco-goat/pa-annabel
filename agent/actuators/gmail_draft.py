@@ -55,12 +55,20 @@ def send_message(*, to: str, subject: str, body: str, thread_id: str = "") -> st
     return f"verstuurd aan {to} (id {sent['id']})"
 
 
-def create_draft(*, to: str, subject: str, body: str, thread_id: str = "") -> str:
+def create_draft(*, to: str, subject: str, body: str, thread_id: str = "",
+                 drive_file_id: str = "") -> str:
     msg = EmailMessage()
     msg.set_content(body)
     if to:
         msg["To"] = to
     msg["Subject"] = subject or "(geen onderwerp)"
+
+    if drive_file_id:
+        from ..collectors.drive import download
+        name, mime, data = download(drive_file_id)
+        maintype, _, subtype = mime.partition("/")
+        msg.add_attachment(data, maintype=maintype, subtype=subtype or "octet-stream",
+                           filename=name)
 
     raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
     payload: dict = {"message": {"raw": raw}}

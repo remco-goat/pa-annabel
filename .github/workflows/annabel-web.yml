@@ -1,0 +1,57 @@
+name: annabel-web
+
+# Web-acties (kind 'web_action'): draait één goedgekeurd voorstel met
+# Playwright + Chromium en zet de screenshot als bewijs in Supabase Storage.
+# Bewust een apart workflow-bestand: de gewone tick (annabel.yml) blijft
+# licht, alleen hier wordt playwright geïnstalleerd.
+# Wordt gedispatch't vanuit agent/apply.py (GITHUB_TOKEN, actions: write).
+on:
+  workflow_dispatch:
+    inputs:
+      proposal_id:
+        description: "id van het goedgekeurde web_action-voorstel"
+        required: true
+        type: string
+
+concurrency:
+  group: annabel-web
+  cancel-in-progress: false
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: |
+          pip install -q -r requirements.txt playwright
+          playwright install --with-deps chromium
+
+      - name: Geheimen klaarzetten
+        env:
+          ENV_FILE: |
+            SUPABASE_URL=${{ secrets.SUPABASE_URL }}
+            SUPABASE_SERVICE_KEY=${{ secrets.SUPABASE_SERVICE_KEY }}
+            ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}
+            TODOIST_TOKEN=${{ secrets.TODOIST_TOKEN }}
+            VAPID_PRIVATE_KEY=${{ secrets.VAPID_PRIVATE_KEY }}
+            PICNIC_AUTH_TOKEN=${{ secrets.PICNIC_AUTH_TOKEN }}
+            TODO_PROVIDER=todoist
+            ASSISTANT_MODEL=claude-opus-5
+            ASSISTANT_EFFORT=medium
+          GOOGLE_CLIENT: ${{ secrets.GOOGLE_CLIENT_JSON }}
+          GOOGLE_TOKEN: ${{ secrets.GOOGLE_TOKEN_JSON }}
+        run: |
+          printf '%s' "$ENV_FILE" > .env
+          mkdir -p .secrets
+          printf '%s' "$GOOGLE_CLIENT" > .secrets/google_client.json
+          printf '%s' "$GOOGLE_TOKEN"  > .secrets/google_token.json
+
+      - name: Web-actie uitvoeren
+        run: python -m agent.webrun ${{ inputs.proposal_id }}

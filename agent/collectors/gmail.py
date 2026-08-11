@@ -124,6 +124,22 @@ def search(query: str, limit: int = 6) -> list[dict]:
     return hits
 
 
+def sent_examples(person: str, limit: int = 3) -> list[str]:
+    """Laatste mails die Remco ZELF aan deze persoon stuurde — als stijlvoorbeeld."""
+    svc = gmail_service()
+    res = svc.users().messages().list(
+        userId="me", q=f"in:sent to:{person}", maxResults=limit
+    ).execute()
+    out = []
+    for ref in res.get("messages", []):
+        msg = svc.users().messages().get(userId="me", id=ref["id"], format="full").execute()
+        payload = msg.get("payload", {})
+        body = _body_text(payload)[:800]
+        if body:
+            out.append(f"Aan: {_header(payload, 'To')}\nOnderwerp: {_header(payload, 'Subject')}\n{body}")
+    return out
+
+
 def collect() -> tuple[list[dict], dict[str, list[dict]]]:
     """Geeft (signalen, documenten-per-mail) terug."""
     svc = gmail_service()

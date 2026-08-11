@@ -40,6 +40,7 @@ GOOGLE_TOKEN_FILE = ROOT / os.environ.get("GOOGLE_TOKEN_FILE", ".secrets/google_
 GOOGLE_SCOPES = [
     "https://www.googleapis.com/auth/gmail.modify",
     "https://www.googleapis.com/auth/calendar.readonly",
+    "https://www.googleapis.com/auth/drive.readonly",
 ]
 
 # --- To-do ----------------------------------------------------------------

@@ -41,25 +41,53 @@ def main() -> int:
         for s in todo_signals
     ]
 
-    # Mail-zoekcontext: eerst kort bepalen óf en wát er gezocht moet worden,
-    # dan de hele mailbox doorzoeken en de treffers aan het brein geven.
+    # Zoekplan: eerst kort bepalen wát er nodig is (mail, Drive, stijl-
+    # voorbeelden, financiële context), dan gericht ophalen.
     mail_hits: list[dict] = []
+    drive_hits: list[dict] = []
+    style_examples: dict[str, list[str]] = {}
+    finance_context = ""
     try:
-        from .brain import mail_queries
+        from .brain import search_plan
+        plan = search_plan(commands, model=config.MODEL_COMMANDS)
+
         from .collectors.gmail import search as gmail_search
-        for q in mail_queries(commands, model=config.MODEL_COMMANDS):
+        for q in plan["mail_queries"]:
             logger.info("  mail-zoekopdracht: %s", q)
             for hit in gmail_search(q, limit=5):
                 if hit["message_id"] not in {h["message_id"] for h in mail_hits}:
                     mail_hits.append(hit)
-        if mail_hits:
-            logger.info("  %d mail-treffer(s) meegegeven aan het brein", len(mail_hits))
+
+        if plan["drive_queries"]:
+            from .collectors.drive import search as drive_search
+            for q in plan["drive_queries"]:
+                logger.info("  drive-zoekopdracht: %s", q)
+                for hit in drive_search(q, limit=5):
+                    if hit["drive_file_id"] not in {h["drive_file_id"] for h in drive_hits}:
+                        drive_hits.append(hit)
+
+        if plan["personen"]:
+            from .collectors.gmail import sent_examples
+            for naam in plan["personen"]:
+                voorbeelden = sent_examples(naam)
+                if voorbeelden:
+                    style_examples[naam] = voorbeelden
+                    logger.info("  stijlvoorbeelden voor %s: %d", naam, len(voorbeelden))
+
+        if plan.get("financieel"):
+            from .finance import overview
+            finance_context = overview()
+            logger.info("  financiële context meegegeven")
+
+        if mail_hits or drive_hits:
+            logger.info("  treffers: %d mail, %d drive", len(mail_hits), len(drive_hits))
     except Exception:
-        logger.exception("mail-zoeken mislukt — opdrachten gaan door zonder zoekresultaten")
+        logger.exception("zoeken mislukt — opdrachten gaan door zonder zoekresultaten")
 
     try:
         result = think(commands, {}, open_tasks, datetime.now(config.TZ), commands_only=True,
-                       model=config.MODEL_COMMANDS, mail_hits=mail_hits)
+                       model=config.MODEL_COMMANDS, mail_hits=mail_hits, drive_hits=drive_hits,
+                       style_examples=style_examples, finance_context=finance_context)
     except Exception as exc:
         logger.exception("brein faalde op opdrachten")
         db.finish_run(run_id, ok=False, stats={"opdrachten": len(commands)}, error=str(exc))
@@ -89,6 +117,9 @@ def main() -> int:
                     "grocery_items": p.get("grocery_items", []),
                     "email_action": p.get("email_action", ""),
                     "email_message_ids": p.get("email_message_ids", []),
+                    "drive_attach_file_id": p.get("drive_attach_file_id", ""),
+                    "web_flow": p.get("web_flow", ""),
+                    "web_params_json": p.get("web_params_json", ""),
                     "source": "command",
                 },
             }

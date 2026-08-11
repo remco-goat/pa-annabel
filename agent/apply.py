@@ -37,6 +37,26 @@ def _execute(proposal: dict) -> str:
             note=action.get("draft_body", ""),
         )
 
+    if kind == "web_action":
+        # Zwaar (Playwright) → aparte workflow; agent.webrun rondt het proposal
+        # daarna zelf af met resultaat + bewijs-screenshot.
+        import json as _json
+        import os
+        import httpx as _httpx
+        token = os.environ.get("GITHUB_TOKEN", "")
+        if not token:
+            import subprocess
+            token = subprocess.run(["gh", "auth", "token"], capture_output=True, text=True).stdout.strip()
+        resp = _httpx.post(
+            "https://api.github.com/repos/remco-goat/pa-annabel/actions/workflows/annabel-web.yml/dispatches",
+            json={"ref": "main", "inputs": {"proposal_id": str(proposal["id"])}},
+            headers={"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json",
+                     "User-Agent": "annabel"},
+            timeout=30,
+        )
+        resp.raise_for_status()
+        return "web-actie gestart — resultaat en bewijs volgen op deze kaart"
+
     if kind == "email_action":
         from .actuators.gmail_actions import apply_email_action
         return apply_email_action(
@@ -73,6 +93,7 @@ def _execute(proposal: dict) -> str:
             subject=action.get("draft_subject", ""),
             body=action.get("draft_body", ""),
             thread_id=action.get("thread_id", ""),
+            drive_file_id=action.get("drive_attach_file_id", ""),
         )
 
     if kind in ("buy", "reminder"):

@@ -93,14 +93,29 @@ def main() -> int:
         for s in todo_signals
     ]
 
+    from . import finance
     try:
-        result = think(fresh, docs_for_fresh, open_tasks, now)
+        fin_ctx = finance.overview()
+    except Exception:
+        logger.exception("financieel overzicht ophalen mislukt")
+        fin_ctx = ""
+
+    try:
+        result = think(fresh, docs_for_fresh, open_tasks, now, finance_context=fin_ctx)
     except Exception as exc:
         logger.exception("brein faalde")
         db.finish_run(run_id, ok=False, stats=stats, error=str(exc))
         # Traceback staat in het logbestand; niet ook naar stderr —
         # in GitHub Actions zijn die logs publiek.
         raise SystemExit(1)
+
+    try:
+        n_fin = finance.store(result.get("finance_items") or [])
+        if n_fin:
+            stats["financieel"] = n_fin
+            logger.info("  financiële posten geregistreerd: %d", n_fin)
+    except Exception:
+        logger.exception("financiële posten opslaan mislukt")
 
     stats["voorstellen"] = len(result["proposals"])
     stats["tokens"] = result.get("_usage", {})
@@ -146,6 +161,9 @@ def main() -> int:
                     "grocery_items": p.get("grocery_items", []),
                     "email_action": p.get("email_action", ""),
                     "email_message_ids": p.get("email_message_ids", []),
+                    "drive_attach_file_id": p.get("drive_attach_file_id", ""),
+                    "web_flow": p.get("web_flow", ""),
+                    "web_params_json": p.get("web_params_json", ""),
                     "source": p.get("source", ""),
                 },
             }

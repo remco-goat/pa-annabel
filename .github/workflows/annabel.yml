@@ -28,6 +28,9 @@ jobs:
   annabel:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: write   # apply.py mag de web-workflow dispatchen
     steps:
       - uses: actions/checkout@v4
 
@@ -70,4 +73,6 @@ jobs:
 
       - name: Tick (uitvoeren + opdrachten)
         if: github.event.schedule == '*/15 * * * *' || inputs.job == 'tick'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: python -m agent.apply && python -m agent.commands

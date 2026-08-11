@@ -87,6 +87,10 @@ def credentials() -> Credentials:
     return creds
 
 
+def drive_service():
+    return build("drive", "v3", credentials=credentials(), cache_discovery=False)
+
+
 def gmail_service():
     return build("gmail", "v1", credentials=credentials(), cache_discovery=False)
 
