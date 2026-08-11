@@ -75,8 +75,9 @@ def _execute(proposal: dict) -> str:
             # Picnic-koppeling (nog) niet beschikbaar → boodschappenlijst als
             # taak, zodat de opdracht nooit in het niets verdwijnt.
             url = todo_adapter().create(
-                "Boodschappen: " + ", ".join(items),
+                "Boodschappen",
                 note=f"Picnic-mandje vullen lukte niet ({exc}); handmatig bestellen.",
+                subtasks=items,
             )
             return f"Picnic niet beschikbaar — als taak op je lijst gezet: {url}"
 
@@ -85,6 +86,7 @@ def _execute(proposal: dict) -> str:
             action.get("task_title") or proposal["title"],
             due=action.get("task_due") or None,
             note=proposal.get("detail"),
+            subtasks=action.get("task_subtasks") or None,
         )
 
     if kind == "draft_reply":

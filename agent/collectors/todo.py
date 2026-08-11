@@ -20,7 +20,8 @@ from .. import config
 
 class TodoAdapter(Protocol):
     def fetch(self) -> list[dict[str, Any]]: ...
-    def create(self, title: str, *, due: str | None = None, note: str | None = None) -> str: ...
+    def create(self, title: str, *, due: str | None = None, note: str | None = None,
+               subtasks: list[str] | None = None) -> str: ...
 
 
 # --------------------------------------------------------------------------
@@ -96,7 +97,8 @@ class TodoistAdapter:
             )
         return signals
 
-    def create(self, title: str, *, due: str | None = None, note: str | None = None) -> str:
+    def create(self, title: str, *, due: str | None = None, note: str | None = None,
+               subtasks: list[str] | None = None) -> str:
         body: dict[str, Any] = {"content": title}
         if due:
             body["due_date"] = due          # YYYY-MM-DD
@@ -105,7 +107,13 @@ class TodoistAdapter:
         resp = self._client.post("/tasks", json=body)
         resp.raise_for_status()
         task = resp.json()
-        return f"https://app.todoist.com/app/task/{task['id']}"
+
+        # Subtaken: los afvinkbaar onder de hoofdtaak.
+        for sub in subtasks or []:
+            self._client.post("/tasks", json={"content": sub, "parent_id": task["id"]}).raise_for_status()
+
+        url = f"https://app.todoist.com/app/task/{task['id']}"
+        return f"{url} (+{len(subtasks)} subtaken)" if subtasks else url
 
     def complete(self, task_id: str) -> str:
         """Vinkt een taak af (close). Herhalende taken schuiven door naar de
@@ -162,7 +170,8 @@ class MicrosoftTodoAdapter:
                     )
             return signals
 
-    def create(self, title: str, *, due: str | None = None, note: str | None = None) -> str:
+    def create(self, title: str, *, due: str | None = None, note: str | None = None,
+               subtasks: list[str] | None = None) -> str:
         with self._client() as client:
             lists = client.get("/lists").json().get("value", [])
             default = next((l for l in lists if l.get("wellknownListName") == "defaultList"), lists[0])
@@ -180,7 +189,8 @@ class NullAdapter:
     def fetch(self) -> list[dict[str, Any]]:
         return []
 
-    def create(self, title: str, *, due: str | None = None, note: str | None = None) -> str:
+    def create(self, title: str, *, due: str | None = None, note: str | None = None,
+               subtasks: list[str] | None = None) -> str:
         return "overgeslagen (TODO_PROVIDER=none)"
 
 

@@ -153,6 +153,7 @@ def main() -> int:
                 "action": {
                     "task_title": p.get("task_title", ""),
                     "task_due": p.get("task_due", ""),
+                    "task_subtasks": p.get("task_subtasks", []),
                     "draft_to": p.get("draft_to", ""),
                     "draft_subject": p.get("draft_subject", ""),
                     "draft_body": p.get("draft_body", ""),

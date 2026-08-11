@@ -39,6 +39,11 @@ Regels:
   wuift het met één tik weg; iets missen is duurder dan iets te veel voorstellen.
 - Terugkerende storingen, verlopen deadlines en afspraken die iets van hem vragen
   (iets meenemen, iets terugbrengen, ergens zijn) zijn actiepunten.
+- Bundel geen ONafhankelijke acties in één voorstel — maak er losse voorstellen van,
+  dan kan Remco ze apart goedkeuren en afvinken. Bestaat één taak uit meerdere
+  deelstappen die bij elkaar horen (bijv. "tuin: klimop weghalen, water geven,
+  afval wegbrengen"), geef die dan mee als task_subtasks — die worden los
+  afvinkbare subtaken in Todoist.
 - Een mail die alleen ter kennisgeving is, is geen actiepunt. Nieuwsbrieven, facturen
   die automatisch betaald worden, en bevestigingen negeer je.
 - Bij notulen en verslagen: haal er de actiepunten uit die aan Remco zijn toegewezen,
@@ -151,6 +156,12 @@ SCHEMA: dict[str, Any] = {
                         "description": "external_id van het signaal waar dit uit volgt. Leeg als er geen is.",
                     },
                     "task_title": {"type": "string", "description": "Bij create_task: de taaktekst. Anders leeg."},
+                    "task_subtasks": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Bij create_task: los afvinkbare deelstappen als de taak "
+                                       "uit meerdere onderdelen bestaat. Leeg bij een enkelvoudige taak.",
+                    },
                     "task_due": {
                         "type": "string",
                         "description": "Bij create_task: deadline als YYYY-MM-DD. Leeg als er geen is.",
@@ -202,7 +213,7 @@ SCHEMA: dict[str, Any] = {
                 },
                 "required": [
                     "kind", "title", "detail", "urgency", "source", "source_id",
-                    "task_title", "task_due", "draft_to", "draft_subject",
+                    "task_title", "task_subtasks", "task_due", "draft_to", "draft_subject",
                     "draft_body", "thread_id", "forward_message_id", "grocery_items", "email_action", "email_message_ids", "drive_attach_file_id", "web_flow", "web_params_json",
                 ],
                 "additionalProperties": False,
