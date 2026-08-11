@@ -55,6 +55,11 @@ def credentials() -> Credentials:
             str(config.GOOGLE_TOKEN_FILE), config.GOOGLE_SCOPES
         )
 
+    # Een geldig token met te wéinig rechten (bijv. van vóór de Drive-scope)
+    # telt niet — dan moet er opnieuw toestemming gevraagd worden.
+    if creds and set(config.GOOGLE_SCOPES) - set(creds.scopes or []):
+        creds = None
+
     if creds and creds.valid:
         return creds
 
