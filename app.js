@@ -383,10 +383,13 @@ function renderOpen(items) {
 }
 
 function renderHistory(items) {
+  // Alleen wat Remco bewust heeft afgevinkt — uitgevoerde goedkeuringen horen
+  // hier niet (die zie je in de wachtrij, en bij falen als rode kaart).
+  items = items.filter((p) => p.status === "done" && (p.action || {}).complete_task_id);
   const wrap = $("history");
   if (!items.length) return void (wrap.hidden = true);
   wrap.hidden = false;
-  $("history-count").textContent = `Vandaag afgehandeld (${items.length})`;
+  $("history-count").textContent = `Vandaag afgevinkt (${items.length})`;
 
   const list = $("history-list");
   list.textContent = "";
