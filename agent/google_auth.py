@@ -13,6 +13,7 @@ Werkt met beide OAuth-clienttypes:
 from __future__ import annotations
 
 import json
+import sys
 
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -50,14 +51,20 @@ def _check_web_client() -> None:
 
 def credentials() -> Credentials:
     creds: Credentials | None = None
+    missing_scopes: set[str] = set()
     if config.GOOGLE_TOKEN_FILE.exists():
         creds = Credentials.from_authorized_user_file(
             str(config.GOOGLE_TOKEN_FILE), config.GOOGLE_SCOPES
         )
+        # from_authorized_user_file zet de GEVRAAGDE scopes op het object;
+        # wat er werkelijk verleend is staat alleen in het bestand zelf.
+        granted = json.loads(config.GOOGLE_TOKEN_FILE.read_text()).get("scopes") or []
+        missing_scopes = set(config.GOOGLE_SCOPES) - set(granted)
 
     # Een geldig token met te wéinig rechten (bijv. van vóór de Drive-scope)
-    # telt niet — dan moet er opnieuw toestemming gevraagd worden.
-    if creds and set(config.GOOGLE_SCOPES) - set(creds.scopes or []):
+    # telt niet — refreshen met de volle scope-lijst geeft dan invalid_scope,
+    # dus er moet opnieuw toestemming gevraagd worden.
+    if creds and missing_scopes:
         creds = None
 
     if creds and creds.valid:
@@ -66,6 +73,14 @@ def credentials() -> Credentials:
     if creds and creds.expired and creds.refresh_token:
         creds.refresh(Request())
     else:
+        if missing_scopes and not sys.stdin.isatty():
+            raise RuntimeError(
+                f"Google-token mist scope(s) {sorted(missing_scopes)} en her-consent "
+                "kan alleen in een browser. Draai lokaal `python -m agent.google_auth` "
+                "(vink op het toestemmingsscherm ALLE onderdelen aan, ook Drive) en "
+                "ververs daarna het secret: gh secret set GOOGLE_TOKEN_JSON "
+                "-R remco-goat/pa-annabel < .secrets/google_token.json"
+            )
         if not config.GOOGLE_CREDENTIALS_FILE.exists():
             raise RuntimeError(
                 f"Geen Google client secret gevonden op {config.GOOGLE_CREDENTIALS_FILE}. "
@@ -85,6 +100,15 @@ def credentials() -> Credentials:
             prompt="consent",          # forceert een refresh_token, ook bij hergebruik
             access_type="offline",
         )
+        # Google laat je op het consent-scherm onderdelen uitvinken; een half
+        # token opslaan geeft later alleen maar invalid_scope in de cloud.
+        not_granted = set(config.GOOGLE_SCOPES) - set(creds.scopes or [])
+        if not_granted:
+            raise RuntimeError(
+                f"Toestemming onvolledig — niet verleend: {sorted(not_granted)}. "
+                "Draai opnieuw en vink op het toestemmingsscherm ALLE onderdelen aan "
+                "(ook 'Alle Google Drive-bestanden bekijken en downloaden')."
+            )
 
     config.GOOGLE_TOKEN_FILE.parent.mkdir(parents=True, exist_ok=True)
     config.GOOGLE_TOKEN_FILE.write_text(creds.to_json())

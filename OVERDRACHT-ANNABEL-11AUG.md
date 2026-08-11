@@ -53,11 +53,19 @@ app-badge · historie toont alleen afgevinkte taken.
    vraag aan Remco: kreeg hij een sms bij het inloggen? Fallback is actief:
    boodschappen worden een Todoist-taak met subtaken. Code: `agent/actuators/picnic.py`,
    login: `agent/picnic_login.py` (met sms-stap die dus 400 geeft).
-2. **Drive-herautorisatie**: code is af (zoeken + bijlage aan concept), maar het
-   Google-token mist de drive.readonly-scope. Remco moet
-   `.venv/bin/python -m agent.google_auth` draaien (script eist nu her-consent
-   bij ontbrekende scopes) en daarna moet `GOOGLE_TOKEN_JSON` in de
-   GitHub-secrets ververst worden: `gh secret set GOOGLE_TOKEN_JSON -R remco-goat/pa-annabel < .secrets/google_token.json`.
+2. **Google-herautorisatie — URGENT sinds 11 aug ~07:48 UTC**: de her-consent van
+   die ochtend verleende maar 2 van de 3 scopes (Drive-vinkje niet aangezet), en
+   daardoor faalt sindsdien ELKE Google-call in de cloud met `invalid_scope` bij
+   de token-refresh — mail lezen, agenda, mail-zoeken, concepten én mailbox-acties.
+   Stil bovendien: collectors en de zoekstap slikken de fout weg, runs blijven "ok"
+   met gmail:0. Herstel (alleen Remco): `.venv/bin/python -m agent.google_auth`
+   draaien en op het toestemmingsscherm ALLE vinkjes aanzetten (ook Drive), daarna
+   `gh secret set GOOGLE_TOKEN_JSON -R remco-goat/pa-annabel < .secrets/google_token.json`.
+   google_auth.py is gefixt (11 aug, avond): de scope-guard leest nu de wérkelijk
+   verleende scopes uit het token-bestand (de oude guard op `creds.scopes` was dode
+   code — from_authorized_user_file zet daar de gevraagde scopes op), CI krijgt een
+   duidelijke foutmelding i.p.v. stil falen, en een half toestemmingsscherm wordt
+   geweigerd. Nog committen/pushen naar main, anders draait de cloud de oude code.
 3. **SMTP** (laag): login-mails bevatten een link i.p.v. code; sjabloon kan pas
    aangepast na custom SMTP (formulier stond klaar; app-wachtwoord = actie Remco).
    Weinig urgent: sessies zijn permanent, en een beheerder-code kan altijd via
