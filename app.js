@@ -248,7 +248,7 @@ async function load() {
   const since = new Date();
   since.setHours(0, 0, 0, 0);
 
-  const [briefRes, openRes, doneRes, queuedRes] = await Promise.all([
+  const [briefRes, openRes, doneRes, queuedRes, tasksRes] = await Promise.all([
     sb.from("briefs").select("*").order("created_at", { ascending: false }).limit(1),
     sb.from("proposals").select(SELECT)
       .in("status", ["pending", "snoozed", "failed"])
@@ -260,15 +260,117 @@ async function load() {
     sb.from("proposals").select("id,title")
       .eq("status", "approved")
       .order("decided_at", { ascending: true }),
+    sb.from("signals").select("id,external_id,title,payload")
+      .eq("source", "todo").in("status", ["new", "briefed"]),
   ]);
 
-  for (const r of [briefRes, openRes, doneRes, queuedRes]) if (r.error) return fail(r.error.message);
+  for (const r of [briefRes, openRes, doneRes, queuedRes, tasksRes]) if (r.error) return fail(r.error.message);
 
   renderBrief(briefRes.data[0]);
   renderOpen(openRes.data.filter(visibleNow));
   renderHistory(doneRes.data);
   renderQueue(queuedRes.data);
+  renderTasks(tasksRes.data);
   loadCommands();
+}
+
+// --- takenlijst -------------------------------------------------------------
+// De open Todoist-taken, door de agent elk kwartier gespiegeld naar signals.
+// Afvinken hier sluit de taak écht: een klaargezet (goedgekeurd) voorstel dat
+// de agent bij de volgende tick uitvoert. Alleen hoofdtaken; subtaken vink je
+// in Todoist zelf af.
+
+function taskDueLabel(due) {
+  if (!due) return null;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const d = new Date(due.slice(0, 10)); d.setHours(0, 0, 0, 0);
+  const days = Math.round((d - today) / 864e5);
+  if (days < 0) return { text: "over tijd", cls: "overdue" };
+  if (days === 0) return { text: "vandaag", cls: "today" };
+  if (days === 1) return { text: "morgen", cls: "" };
+  return { text: d.toLocaleDateString("nl-NL", { day: "numeric", month: "short" }), cls: "" };
+}
+
+function renderTasks(items) {
+  const wrap = $("tasks");
+  const tasks = (items || [])
+    .filter((t) => !(t.payload || {}).parent_id)
+    .sort((a, b) => {
+      const pa = a.payload || {}, pb = b.payload || {};
+      if (!!pb.overdue - !!pa.overdue) return !!pb.overdue - !!pa.overdue;
+      const da = pa.deadline || pa.due || "9999", db_ = pb.deadline || pb.due || "9999";
+      return da < db_ ? -1 : da > db_ ? 1 : a.title.localeCompare(b.title);
+    });
+
+  if (!tasks.length) return void (wrap.hidden = true);
+  wrap.hidden = false;
+  wrap.open = localStorage.getItem("tasks-open") !== "0";
+  wrap.ontoggle = () => localStorage.setItem("tasks-open", wrap.open ? "1" : "0");
+  $("tasks-count").textContent = `Taken (${tasks.length})`;
+
+  const list = $("tasks-list");
+  list.textContent = "";
+  for (const t of tasks) list.append(taskRow(t));
+}
+
+function taskRow(t) {
+  const row = document.createElement("div");
+  row.className = "task-row";
+
+  const box = document.createElement("button");
+  box.className = "task-box";
+  box.setAttribute("aria-label", `'${t.title}' afvinken`);
+
+  const text = document.createElement("span");
+  text.className = "task-title";
+  text.textContent = t.title;
+
+  row.append(box, text);
+
+  const due = taskDueLabel((t.payload || {}).deadline || (t.payload || {}).due);
+  if (due) {
+    const chip = document.createElement("span");
+    chip.className = `task-due ${due.cls}`;
+    chip.textContent = due.text;
+    row.append(chip);
+  }
+  if ((t.payload || {}).url) {
+    row.append(link(t.payload.url, "↗"));
+  }
+
+  box.addEventListener("click", () => completeTask(t, row));
+  return row;
+}
+
+async function completeTask(t, row) {
+  tap();
+  row.classList.add("checked");
+
+  // Klaargezet voorstel: de agent vinkt de taak bij de volgende tick af in
+  // Todoist. Het signaal gaat meteen op 'handled' zodat de lijst klopt.
+  const { data, error } = await sb.from("proposals").insert({
+    kind: "create_task",
+    title: t.title,
+    detail: "Afgevinkt in de app",
+    urgency: "today",
+    status: "approved",
+    decided_at: new Date().toISOString(),
+    action: { complete_task_id: t.external_id },
+  }).select("id").single();
+  if (error) {
+    row.classList.remove("checked");
+    return fail(error.message);
+  }
+  const { error: e2 } = await sb.from("signals")
+    .update({ status: "handled" }).eq("id", t.id);
+  if (e2) return fail(e2.message);
+
+  toast("Afgevinkt — wordt in Todoist gesloten", async () => {
+    await sb.from("proposals").update({ status: "rejected" }).eq("id", data.id);
+    await sb.from("signals").update({ status: "briefed" }).eq("id", t.id);
+    load();
+  });
+  setTimeout(load, 400);
 }
 
 // Goedgekeurd maar nog niet uitgevoerd: laat zien dat het onderweg is, zodat
