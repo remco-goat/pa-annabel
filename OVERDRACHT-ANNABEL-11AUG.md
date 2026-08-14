@@ -43,7 +43,10 @@ waakhond (facturen → signals source='finance', overzicht als context) ·
 stijlvoorbeelden per persoon (live uit verzonden mail) · web-acties met
 screenshot-bewijs (Playwright in aparte workflow, bewijs in storage-bucket
 'bewijs') · pushmeldingen (alleen bij actie nodig; werkend bevestigd) ·
-app-badge · historie toont alleen afgevinkte taken.
+app-badge · historie toont alleen afgevinkte taken · takenlijst in de app
+(sinds 14 aug): open Todoist-taken als checkboxes, elke tick gesynct; afvinken
+in de app sluit de taak echt in Todoist, taken die Annabel aanmaakt verschijnen
+direct · brein kent zijn eerdere voorstellen (sinds 14 aug) — geen duplicaten meer.
 
 ## Open punten
 
