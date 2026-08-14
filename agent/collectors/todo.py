@@ -87,6 +87,7 @@ class TodoistAdapter:
                         "recurring": bool((task.get("due") or {}).get("is_recurring")),
                         "priority": task.get("priority"),
                         "project_id": task.get("project_id"),
+                        "parent_id": task.get("parent_id"),
                         "labels": task.get("labels", []),
                         "url": f"https://app.todoist.com/app/task/{task['id']}",
                         # Vergelijking op de datum-prefix: `due.date` kan ook een

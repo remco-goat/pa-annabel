@@ -296,6 +296,59 @@ input {
 .hist-mark { color: var(--accent); flex: none; }
 .hist-row span:nth-child(2) { flex: 1; }
 
+/* --- takenlijst ------------------------------------------------------------ */
+.tasks {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0.4rem 1rem;
+  margin-bottom: 1.2rem;
+}
+.tasks summary {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 0.5rem 0;
+}
+.task-row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.5rem 0;
+  border-top: 1px solid var(--line);
+}
+.task-box {
+  flex: none;
+  width: 1.35rem;
+  height: 1.35rem;
+  padding: 0;
+  border: 1.5px solid var(--muted);
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+}
+.task-title { flex: 1; font-size: 0.95rem; }
+.task-row.checked .task-box {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+.task-row.checked .task-box::after { content: "✓"; color: var(--on-accent); font-size: 0.8rem; }
+.task-row.checked .task-title { text-decoration: line-through; color: var(--muted); }
+.task-due {
+  flex: none;
+  font-size: 0.75rem;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.1rem 0.5rem;
+  white-space: nowrap;
+}
+.task-due.overdue { color: var(--danger); border-color: var(--danger); }
+.task-due.today { color: var(--now); border-color: var(--now); }
+.task-row .source-link { flex: none; font-size: 0.9rem; }
+
 /* --- skeleton ------------------------------------------------------------ */
 .skeleton {
   background: linear-gradient(90deg, var(--card) 25%, var(--line) 50%, var(--card) 75%);

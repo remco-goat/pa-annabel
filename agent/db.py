@@ -153,6 +153,50 @@ def pending_proposals() -> list[dict[str, Any]]:
     return select("proposals", status="eq.pending", order="created_at.desc")
 
 
+def sync_todo(current: list[dict]) -> dict[str, int]:
+    """Spiegelt de open Todoist-taken naar signals — de takenlijst in de PWA.
+
+    - bestaande rijen: titel/payload verversen (status blijft onaangeroerd,
+      zodat de new→briefed-dedupe van record_signals blijft werken)
+    - verdwenen taken (afgevinkt of verwijderd, waar dan ook): status 'handled'
+    - heropende taken: terug naar 'briefed'
+    - écht nieuwe taken worden hier NIET ingevoegd — dat doet record_signals in
+      de uurlijkse run, zodat het brein ze als nieuw signaal blijft zien
+    """
+    known = {
+        r["external_id"]: r["status"]
+        for r in select("signals", source="eq.todo", select="external_id,status")
+    }
+    cur_ids = {s["external_id"] for s in current}
+    stats = {"bijgewerkt": 0, "afgevoerd": 0, "heropend": 0}
+
+    updates = [
+        {**s, "last_seen_at": now_iso()}
+        for s in current
+        if s["external_id"] in known
+    ]
+    if updates:
+        upsert("signals", updates, on_conflict="source,external_id", returning=False)
+        stats["bijgewerkt"] = len(updates)
+
+    def _quoted(ids: list[str]) -> str:
+        return ",".join('"' + i.replace('"', '""') + '"' for i in ids)
+
+    gone = [i for i, st in known.items() if st in ("new", "briefed") and i not in cur_ids]
+    if gone:
+        update("signals", {"status": "handled"},
+               source="eq.todo", external_id=f"in.({_quoted(gone)})")
+        stats["afgevoerd"] = len(gone)
+
+    reopened = [i for i in cur_ids if known.get(i) == "handled"]
+    if reopened:
+        update("signals", {"status": "briefed"},
+               source="eq.todo", external_id=f"in.({_quoted(reopened)})")
+        stats["heropend"] = len(reopened)
+
+    return stats
+
+
 def recent_proposals(days: int = 5, limit: int = 80) -> list[dict[str, Any]]:
     """Voorstellen van de afgelopen dagen, als geheugen voor het brein.
 

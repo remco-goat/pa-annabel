@@ -19,7 +19,13 @@ def _execute(proposal: dict) -> str:
 
     # 'Afvinken' in de app: de bestaande Todoist-taak sluiten i.p.v. iets aanmaken.
     if action.get("complete_task_id"):
-        return todo_adapter().complete(str(action["complete_task_id"]))
+        task_id = str(action["complete_task_id"])
+        result = todo_adapter().complete(task_id)
+        # Meteen uit de takenlijst in de app; de tick-sync zou dit ook doen,
+        # maar dan pas een kwartier later.
+        db.update("signals", {"status": "handled"},
+                  source="eq.todo", external_id=f"eq.{task_id}")
+        return result
 
     if kind == "draft_reply" and action.get("send"):
         # Alleen gezet wanneer Remco in de app expliciet op 'Verstuur' tikte.
@@ -82,12 +88,15 @@ def _execute(proposal: dict) -> str:
             return f"Picnic niet beschikbaar — als taak op je lijst gezet: {url}"
 
     if kind == "create_task":
-        return todo_adapter().create(
+        result = todo_adapter().create(
             action.get("task_title") or proposal["title"],
             due=action.get("task_due") or None,
             note=proposal.get("detail"),
             subtasks=action.get("task_subtasks") or None,
         )
+        _mirror_task(result, action.get("task_title") or proposal["title"],
+                     action.get("task_due") or None)
+        return result
 
     if kind == "draft_reply":
         return gmail_draft.create_draft(
@@ -101,11 +110,14 @@ def _execute(proposal: dict) -> str:
     if kind in ("buy", "reminder"):
         # Kopen doet de agent niet. Wat hij wél doet: het als taak vastleggen
         # zodat het niet verdwijnt. Afrekenen blijft handwerk.
-        return todo_adapter().create(
+        result = todo_adapter().create(
             action.get("task_title") or proposal["title"],
             due=action.get("task_due") or None,
             note=proposal.get("detail"),
         )
+        _mirror_task(result, action.get("task_title") or proposal["title"],
+                     action.get("task_due") or None)
+        return result
 
     if kind == "fyi":
         return "ter kennisgeving — geen actie"
@@ -113,10 +125,43 @@ def _execute(proposal: dict) -> str:
     return f"onbekend type: {kind}"
 
 
+def _mirror_task(result_url: str, title: str, due: str | None) -> None:
+    """Nieuwe Todoist-taak direct in signals zetten, zodat de takenlijst in de
+    app niet op de uurlijkse run hoeft te wachten. Status 'briefed': het brein
+    kent hem al — hij komt uit een goedgekeurd voorstel."""
+    import re
+    m = re.search(r"/task/([A-Za-z0-9]+)", result_url or "")
+    if not m:
+        return
+    try:
+        db.upsert("signals", [{
+            "source": "todo",
+            "external_id": m.group(1),
+            "kind": "task",
+            "title": title,
+            "occurred_at": due or db.now_iso(),
+            "payload": {"due": due, "overdue": False,
+                        "url": f"https://app.todoist.com/app/task/{m.group(1)}"},
+            "status": "briefed",
+            "last_seen_at": db.now_iso(),
+        }], on_conflict="source,external_id", returning=False)
+    except Exception:
+        logger.exception("taak spiegelen naar de app mislukt (komt goed bij de uur-run)")
+
+
 logger = log.setup("apply")
 
 
 def main() -> int:
+    # Takenlijst in de app actueel houden: elke tick (kwartier) de open
+    # Todoist-taken spiegelen — afgevinkt is afgevinkt, waar dat ook gebeurde.
+    try:
+        stats = db.sync_todo(todo_adapter().fetch())
+        if stats["afgevoerd"] or stats["heropend"]:
+            logger.info("takenlijst gesynct: %s", stats)
+    except Exception:
+        logger.exception("taken-sync mislukt")
+
     todo = db.approved_proposals()
     if not todo:
         logger.info("Niets goedgekeurd om uit te voeren.")
