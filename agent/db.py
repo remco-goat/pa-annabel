@@ -153,5 +153,23 @@ def pending_proposals() -> list[dict[str, Any]]:
     return select("proposals", status="eq.pending", order="created_at.desc")
 
 
+def recent_proposals(days: int = 5, limit: int = 80) -> list[dict[str, Any]]:
+    """Voorstellen van de afgelopen dagen, als geheugen voor het brein.
+
+    Zonder dit geheugen stelt het brein hetzelfde elk uur opnieuw voor: de
+    signaal-dedupe vangt alleen nieuwe signalen af, maar herinneringen uit
+    open taken en het financiële overzicht komen elke run terug.
+    """
+    from datetime import timedelta
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+    return select(
+        "proposals",
+        select="created_at,status,kind,title",
+        created_at=f"gte.{cutoff}",
+        order="created_at.desc",
+        limit=str(limit),
+    )
+
+
 def approved_proposals() -> list[dict[str, Any]]:
     return select("proposals", status="eq.approved", order="created_at.asc")

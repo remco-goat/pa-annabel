@@ -53,19 +53,18 @@ app-badge · historie toont alleen afgevinkte taken.
    vraag aan Remco: kreeg hij een sms bij het inloggen? Fallback is actief:
    boodschappen worden een Todoist-taak met subtaken. Code: `agent/actuators/picnic.py`,
    login: `agent/picnic_login.py` (met sms-stap die dus 400 geeft).
-2. **Google-herautorisatie — URGENT sinds 11 aug ~07:48 UTC**: de her-consent van
-   die ochtend verleende maar 2 van de 3 scopes (Drive-vinkje niet aangezet), en
-   daardoor faalt sindsdien ELKE Google-call in de cloud met `invalid_scope` bij
-   de token-refresh — mail lezen, agenda, mail-zoeken, concepten én mailbox-acties.
-   Stil bovendien: collectors en de zoekstap slikken de fout weg, runs blijven "ok"
-   met gmail:0. Herstel (alleen Remco): `.venv/bin/python -m agent.google_auth`
-   draaien en op het toestemmingsscherm ALLE vinkjes aanzetten (ook Drive), daarna
-   `gh secret set GOOGLE_TOKEN_JSON -R remco-goat/pa-annabel < .secrets/google_token.json`.
-   google_auth.py is gefixt (11 aug, avond): de scope-guard leest nu de wérkelijk
-   verleende scopes uit het token-bestand (de oude guard op `creds.scopes` was dode
-   code — from_authorized_user_file zet daar de gevraagde scopes op), CI krijgt een
-   duidelijke foutmelding i.p.v. stil falen, en een half toestemmingsscherm wordt
-   geweigerd. Nog committen/pushen naar main, anders draait de cloud de oude code.
+2. **Google-herautorisatie — OPGELOST 11 aug ~17:00 NL.** Wat er speelde: de
+   her-consent van die ochtend verleende maar 2 van de 3 scopes (Drive-vinkje niet
+   aangezet), waardoor van ~07:48 tot ~15:00 UTC elke Google-call in de cloud stil
+   faalde met `invalid_scope` bij de token-refresh (collectors en de zoekstap
+   slikken fouten weg; runs bleven "ok" met gmail:0). Hersteld: her-consent met
+   alle vinkjes + secret ververst + Drive API in de Cloud-console geënabled
+   (project 20504880539). Refresh, Gmail én Drive daarna live geverifieerd.
+   Structurele fix in google_auth.py (commit 9f2bfc4, gepusht): scope-guard leest
+   nu de wérkelijk verleende scopes uit het token-bestand (guard op `creds.scopes`
+   was dode code — from_authorized_user_file zet daar de gevraagde scopes op), CI
+   krijgt een duidelijke RuntimeError i.p.v. stil falen, en een half aangevinkt
+   toestemmingsscherm wordt geweigerd bij het opslaan.
 3. **SMTP** (laag): login-mails bevatten een link i.p.v. code; sjabloon kan pas
    aangepast na custom SMTP (formulier stond klaar; app-wachtwoord = actie Remco).
    Weinig urgent: sessies zijn permanent, en een beheerder-code kan altijd via

@@ -85,9 +85,16 @@ def main() -> int:
         logger.exception("zoeken mislukt — opdrachten gaan door zonder zoekresultaten")
 
     try:
+        eerdere = db.recent_proposals()
+    except Exception:
+        logger.exception("eerdere voorstellen ophalen mislukt")
+        eerdere = []
+
+    try:
         result = think(commands, {}, open_tasks, datetime.now(config.TZ), commands_only=True,
                        model=config.MODEL_COMMANDS, mail_hits=mail_hits, drive_hits=drive_hits,
-                       style_examples=style_examples, finance_context=finance_context)
+                       style_examples=style_examples, finance_context=finance_context,
+                       recent_proposals=eerdere)
     except Exception as exc:
         logger.exception("brein faalde op opdrachten")
         db.finish_run(run_id, ok=False, stats={"opdrachten": len(commands)}, error=str(exc))

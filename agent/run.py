@@ -101,7 +101,14 @@ def main() -> int:
         fin_ctx = ""
 
     try:
-        result = think(fresh, docs_for_fresh, open_tasks, now, finance_context=fin_ctx)
+        eerdere = db.recent_proposals()
+    except Exception:
+        logger.exception("eerdere voorstellen ophalen mislukt")
+        eerdere = []
+
+    try:
+        result = think(fresh, docs_for_fresh, open_tasks, now, finance_context=fin_ctx,
+                       recent_proposals=eerdere)
     except Exception as exc:
         logger.exception("brein faalde")
         db.finish_run(run_id, ok=False, stats=stats, error=str(exc))
