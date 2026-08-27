@@ -125,6 +125,7 @@ def main() -> int:
                     "grocery_items": p.get("grocery_items", []),
                     "email_action": p.get("email_action", ""),
                     "email_message_ids": p.get("email_message_ids", []),
+                    "email_items": p.get("email_items", []),
                     "drive_attach_file_id": p.get("drive_attach_file_id", ""),
                     "web_flow": p.get("web_flow", ""),
                     "web_params_json": p.get("web_params_json", ""),

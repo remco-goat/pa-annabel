@@ -44,6 +44,12 @@ Regels:
   deelstappen die bij elkaar horen (bijv. "tuin: klimop weghalen, water geven,
   afval wegbrengen"), geef die dan mee als task_subtasks — die worden los
   afvinkbare subtaken in Todoist.
+- UITZONDERING op de bundel-regel: mailbox-acties. Meerdere mails die dezelfde
+  actie nodig hebben (archiveren, op gelezen, prullenbak) bundel je juist in ÉÉN
+  email_action-voorstel per actie, met per mail een regel in email_items
+  (message_id + korte omschrijving "afzender — onderwerp"). In de app staan ze
+  allemaal aangevinkt; Remco haalt het vinkje weg bij mails die hij wil houden.
+  Vul email_message_ids met dezelfde ids (volgorde gelijk aan email_items).
 - Een mail die alleen ter kennisgeving is, is geen actiepunt. Nieuwsbrieven, facturen
   die automatisch betaald worden, en bevestigingen negeer je.
 - Bij notulen en verslagen: haal er de actiepunten uit die aan Remco zijn toegewezen,
@@ -216,6 +222,20 @@ SCHEMA: dict[str, Any] = {
                         "items": {"type": "string"},
                         "description": "Bij email_action: de message_id's (uit zoekresultaten of signalen). Anders leeg.",
                     },
+                    "email_items": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "message_id": {"type": "string"},
+                                "label": {"type": "string", "description": "Korte omschrijving: afzender — onderwerp."},
+                            },
+                            "required": ["message_id", "label"],
+                            "additionalProperties": False,
+                        },
+                        "description": "Bij email_action: per mail een regel voor de opt-out-lijst in de app, "
+                                       "zelfde ids en volgorde als email_message_ids. Anders leeg.",
+                    },
                     "grocery_items": {
                         "type": "array",
                         "items": {"type": "string"},
@@ -226,7 +246,7 @@ SCHEMA: dict[str, Any] = {
                 "required": [
                     "kind", "title", "detail", "urgency", "source", "source_id",
                     "task_title", "task_subtasks", "task_due", "draft_to", "draft_subject",
-                    "draft_body", "thread_id", "forward_message_id", "grocery_items", "email_action", "email_message_ids", "drive_attach_file_id", "web_flow", "web_params_json",
+                    "draft_body", "thread_id", "forward_message_id", "grocery_items", "email_action", "email_message_ids", "email_items", "drive_attach_file_id", "web_flow", "web_params_json",
                 ],
                 "additionalProperties": False,
             },

@@ -349,6 +349,29 @@ input {
 .task-due.today { color: var(--now); border-color: var(--now); }
 .task-row .source-link { flex: none; font-size: 0.9rem; }
 
+/* --- gebundelde mailbox-actie ---------------------------------------------- */
+.mail-list { margin: 0.5rem 0 0.2rem; }
+.mail-item {
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  padding: 0.3rem 0;
+  font-size: 0.9rem;
+  border-top: 1px solid var(--line);
+  cursor: pointer;
+}
+.mail-item:first-child { border-top: none; }
+.mail-item input[type="checkbox"] {
+  flex: none;
+  width: 1.05rem;
+  height: 1.05rem;
+  margin: 0;
+  accent-color: var(--accent);
+  transform: translateY(0.15rem);
+}
+.mail-item span { flex: 1; }
+.mail-item.optout span { text-decoration: line-through; color: var(--muted); }
+
 /* --- skeleton ------------------------------------------------------------ */
 .skeleton {
   background: linear-gradient(90deg, var(--card) 25%, var(--line) 50%, var(--card) 75%);
