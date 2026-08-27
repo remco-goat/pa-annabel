@@ -19,6 +19,10 @@ const KIND_LABEL = {
   buy: "Kopen",
   reminder: "Herinnering",
   fyi: "Ter info",
+  email_action: "Mailbox",
+  forward_email: "Doorsturen",
+  groceries: "Boodschappen",
+  web_action: "Web-actie",
 };
 
 const SOURCE_LABEL = {
@@ -581,6 +585,34 @@ function card(p, { failed = false } = {}) {
     el.append(wrap);
   }
 
+  // Gebundelde mailbox-actie: alle mails aangevinkt, vinkje weghalen = die mail
+  // houden. Goedkeuren voert de actie alleen op de aangevinkte mails uit.
+  const emailItems = p.kind === "email_action" && Array.isArray(p.action?.email_items)
+    ? p.action.email_items.filter((it) => it && it.message_id) : [];
+  let checkedIds = null;
+  if (emailItems.length) {
+    checkedIds = new Set(emailItems.map((it) => it.message_id));
+    const box = document.createElement("div");
+    box.className = "mail-list";
+    for (const it of emailItems) {
+      const lbl = document.createElement("label");
+      lbl.className = "mail-item";
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.checked = true;
+      cb.addEventListener("change", () => {
+        if (cb.checked) checkedIds.add(it.message_id);
+        else checkedIds.delete(it.message_id);
+        lbl.classList.toggle("optout", !cb.checked);
+      });
+      const span = document.createElement("span");
+      span.textContent = it.label || it.message_id;
+      lbl.append(cb, span);
+      box.append(lbl);
+    }
+    el.append(box);
+  }
+
   const actions = document.createElement("div");
   actions.className = "actions";
   const isTodoTask = p.signal?.source === "todo" && p.signal?.external_id;
@@ -614,8 +646,17 @@ function card(p, { failed = false } = {}) {
       button("Nee", "", () => decide(p, "rejected", "Afgewezen")),
     );
   } else {
+    const approve = () => {
+      if (checkedIds) {
+        const ids = [...checkedIds];
+        if (!ids.length) return decide(p, "rejected", "Niets aangevinkt — afgewezen");
+        return decide(p, "approved", `Goedgekeurd (${ids.length} mail${ids.length === 1 ? "" : "s"})`,
+          { email_message_ids: ids });
+      }
+      decide(p, "approved", "Goedgekeurd");
+    };
     actions.append(
-      button("Goedkeuren", "primary", () => decide(p, "approved", "Goedgekeurd")),
+      button("Goedkeuren", "primary", approve),
       button("Morgen", "", () => decide(p, "snoozed", "Morgen weer")),
       button("Nee", "", () => decide(p, "rejected", "Afgewezen")),
     );
