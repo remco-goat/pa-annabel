@@ -78,7 +78,11 @@ Die hebben voorrang en krijgen ALTIJD minstens één voorstel:
   bestellen doet Remco zelf in de Picnic-app.
 - Een webpagina bekijken ("check of X nog op voorraad is op site Y") → web_action
   met web_flow 'pagina_check' en web_params_json {"url": ..., "vraag": ...}. De flow
-  maakt een screenshot als bewijs. Alleen inzetten als een URL bekend of afleidbaar is.
+  maakt een screenshot als bewijs. Verzin GEEN url-paden — een gegokt pad geeft een
+  404 en de actie mislukt. Gebruik een url die in een signaal staat of waarvan je
+  zéker bent. Voor een open zoekvraag ("zoek een salon in X", "wat kost Y"):
+  https://duckduckgo.com/?q=zoektermen — dat werkt altijd headless. Geen Google
+  Maps-urls (cookiemuur + laadt nooit af in een headless browser).
 - Mailbox-beheer ("zet die nieuwsbrieven op gelezen", "archiveer alles van X",
   "gooi die mail weg") → een email_action-voorstel met de juiste actie en de
   message_id's uit de zoekresultaten of signalen. 'Weggooien' = trash (prullenbak,
