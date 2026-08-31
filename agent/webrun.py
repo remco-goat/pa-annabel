@@ -34,6 +34,26 @@ def _bewijs(proposal_id: str, flow_name: str, png: bytes | None) -> str | None:
         return None
 
 
+def _params(action: dict) -> dict:
+    """Het brein levert web_params_json (JSON-string, zo heet het schemaveld);
+    een dict onder web_params accepteren we ook. Ongeldige JSON faalt hier
+    luid, met de echte oorzaak in het resultaat i.p.v. 'params.url ontbreekt'."""
+    import json
+
+    raw = action.get("web_params") or action.get("web_params_json") or {}
+    if isinstance(raw, dict):
+        return raw
+    if not str(raw).strip():
+        return {}
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"web_params_json is geen geldige JSON: {exc}") from exc
+    if not isinstance(parsed, dict):
+        raise ValueError(f"web_params_json moet een JSON-object zijn, kreeg {type(parsed).__name__}")
+    return parsed
+
+
 def main(proposal_id: str) -> int:
     rows = db.select("proposals", id=f"eq.{proposal_id}")
     if not rows:
@@ -43,7 +63,7 @@ def main(proposal_id: str) -> int:
 
     action = proposal.get("action") or {}
     flow_name = action.get("web_flow") or ""
-    params = action.get("web_params") or {}
+    params = _params(action)
 
     run_id = db.start_run()
     logger.info("webflow %r voor voorstel %s (%s)", flow_name, proposal_id, proposal.get("title"))
