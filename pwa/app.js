@@ -25,6 +25,13 @@ const KIND_LABEL = {
   web_action: "Web-actie",
 };
 
+const EMAIL_ACTION_LABEL = {
+  archive: "archiveren",
+  mark_read: "op gelezen zetten",
+  mark_unread: "op ongelezen zetten",
+  trash: "naar de prullenbak",
+};
+
 const SOURCE_LABEL = {
   gmail: "Open de mail",
   calendar: "Open in agenda",
@@ -480,12 +487,127 @@ function renderOpen(items) {
     for (const p of failed) list.append(card(p, { failed: true }));
   }
 
+  // Mailbox-voorstellen met dezelfde actie (archiveren, gelezen, prullenbak)
+  // komen vaak uit verschillende runs als losse kaarten binnen. Hier voegen we
+  // ze samen tot één kaart met één lijst vinkjes en één Goedkeuren-knop.
+  const { bundles, rest } = bundleEmailActions(open);
+  if (bundles.length) {
+    list.append(groupLabel("Mailbox", "mailbox"));
+    for (const b of bundles) list.append(bundleCard(b));
+  }
+
   for (const [key, label] of URGENCY) {
-    const group = open.filter((p) => p.urgency === key);
+    const group = rest.filter((p) => p.urgency === key);
     if (!group.length) continue;
     list.append(groupLabel(label, key));
     for (const p of group) list.append(card(p));
   }
+}
+
+// De mails waar een email_action-voorstel over gaat, als [{message_id, label}].
+function emailItemsOf(p) {
+  const items = Array.isArray(p.action?.email_items)
+    ? p.action.email_items.filter((it) => it && it.message_id) : [];
+  if (items.length) return items;
+  const ids = Array.isArray(p.action?.email_message_ids) ? p.action.email_message_ids : [];
+  return ids.filter(Boolean).map((id) => ({ message_id: id, label: p.title }));
+}
+
+// Groepeert open mailbox-voorstellen per actie. Een groep met minstens twee
+// voorstellen wordt een bundel; alles wat geen bundel wordt blijft een losse kaart.
+function bundleEmailActions(open) {
+  const groups = new Map();
+  for (const p of open) {
+    const act = p.kind === "email_action" ? p.action?.email_action : null;
+    if (!act || !EMAIL_ACTION_LABEL[act] || !emailItemsOf(p).length) continue;
+    if (!groups.has(act)) groups.set(act, []);
+    groups.get(act).push(p);
+  }
+  const bundles = [];
+  const bundled = new Set();
+  for (const [action, proposals] of groups) {
+    if (proposals.length < 2) continue;
+    bundles.push({ action, proposals });
+    for (const p of proposals) bundled.add(p.id);
+  }
+  return { bundles, rest: open.filter((p) => !bundled.has(p.id)) };
+}
+
+// Eén kaart voor een hele stapel mailbox-voorstellen. Vinkje weghalen = die
+// mail houden. Goedkeuren beslist álle onderliggende voorstellen in één keer:
+// goedgekeurd met de aangevinkte mails, of afgewezen als er niets over is.
+function bundleCard({ action, proposals }) {
+  const el = document.createElement("div");
+  el.className = "card is-bundle";
+  el.dataset.id = `bundle-${action}`;
+
+  const rows = [];
+  for (const p of proposals) for (const it of emailItemsOf(p)) rows.push({ p, ...it });
+  const checked = new Set(rows.map((r) => r.message_id));
+
+  const head = document.createElement("div");
+  head.className = "kind";
+  head.textContent = "Mailbox";
+  el.append(head);
+
+  const title = document.createElement("div");
+  title.className = "title";
+  title.textContent = `${rows.length} mails ${EMAIL_ACTION_LABEL[action]}`;
+  el.append(title);
+
+  const detail = document.createElement("p");
+  detail.className = "detail";
+  detail.textContent = `Samengevoegd uit ${proposals.length} voorstellen. Haal het vinkje weg bij mails die je wilt houden.`;
+  el.append(detail);
+
+  const box = document.createElement("div");
+  box.className = "mail-list";
+  for (const r of rows) {
+    const lbl = document.createElement("label");
+    lbl.className = "mail-item";
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.checked = true;
+    cb.addEventListener("change", () => {
+      if (cb.checked) checked.add(r.message_id);
+      else checked.delete(r.message_id);
+      lbl.classList.toggle("optout", !cb.checked);
+    });
+    const span = document.createElement("span");
+    span.textContent = r.label || r.message_id;
+    const url = r.p.signal?.payload?.url;
+    if (url) {
+      const a = link(url, "open");
+      a.className = "source-link mail-open";
+      span.append(" ", a);
+    }
+    lbl.append(cb, span);
+    box.append(lbl);
+  }
+  el.append(box);
+
+  const actions = document.createElement("div");
+  actions.className = "actions";
+  const approve = () => {
+    const entries = proposals.map((p) => {
+      const ids = emailItemsOf(p).map((it) => it.message_id).filter((id) => checked.has(id));
+      return ids.length
+        ? { proposal: p, status: "approved", extraAction: { email_message_ids: ids } }
+        : { proposal: p, status: "rejected" };
+    });
+    const n = checked.size;
+    if (!n) return decideMany(entries, "Niets aangevinkt — alles afgewezen", el);
+    return decideMany(entries, `Goedgekeurd (${n} mail${n === 1 ? "" : "s"})`, el);
+  };
+  actions.append(
+    button("Goedkeuren", "primary", approve),
+    button("Morgen", "", () =>
+      decideMany(proposals.map((p) => ({ proposal: p, status: "snoozed" })), "Morgen weer", el)),
+    button("Nee", "", () =>
+      decideMany(proposals.map((p) => ({ proposal: p, status: "rejected" })), "Afgewezen", el)),
+  );
+  el.append(actions);
+  return el;
 }
 
 function renderHistory(items) {
@@ -734,32 +856,54 @@ function button(label, cls, onClick) {
 }
 
 async function decide(proposal, status, message, extraAction = null) {
-  const previous = proposal.status;
-  const previousAction = proposal.action;
-  const patch = { status, decided_at: new Date().toISOString() };
-  if (extraAction) patch.action = { ...(proposal.action || {}), ...extraAction };
-  if (status === "snoozed") {
+  return decideMany([{ proposal, status, extraAction }], message);
+}
+
+// Beslist één of meer voorstellen in één keer, met één toast en één
+// Ongedaan maken die álle voorstellen terugzet. `cardEl` is de kaart die
+// weg moet (standaard: de kaart van elk voorstel afzonderlijk).
+async function decideMany(entries, message, cardEl = null) {
+  const decidedAt = new Date().toISOString();
+  const snoozeUntil = (() => {
     const t = new Date();
     t.setDate(t.getDate() + 1);
     t.setHours(7, 0, 0, 0);
-    patch.snooze_until = t.toISOString();
-  }
+    return t.toISOString();
+  })();
 
-  const el = document.querySelector(`.card[data-id="${proposal.id}"]`);
-  if (el) el.classList.add("gone");
+  const els = cardEl ? [cardEl]
+    : entries.map((e) => document.querySelector(`.card[data-id="${e.proposal.id}"]`)).filter(Boolean);
+  for (const el of els) el.classList.add("gone");
   tap();
 
-  const { error } = await sb.from("proposals").update(patch).eq("id", proposal.id);
-  if (error) {
-    if (el) el.classList.remove("gone");
-    return fail(error.message);
+  const previous = entries.map((e) => ({
+    id: e.proposal.id, status: e.proposal.status, action: e.proposal.action,
+  }));
+
+  const results = await Promise.all(entries.map((e) => {
+    const patch = { status: e.status, decided_at: decidedAt };
+    if (e.extraAction) patch.action = { ...(e.proposal.action || {}), ...e.extraAction };
+    if (e.status === "snoozed") patch.snooze_until = snoozeUntil;
+    return sb.from("proposals").update(patch).eq("id", e.proposal.id);
+  }));
+  const failed = results.find((r) => r.error);
+  if (failed) {
+    // Deels gelukt kan: zet wat wél lukte terug, zodat de kaart klopt met de DB.
+    await Promise.all(previous.map((pv) =>
+      sb.from("proposals").update({ status: pv.status, decided_at: null, snooze_until: null, action: pv.action })
+        .eq("id", pv.id)));
+    for (const el of els) el.classList.remove("gone");
+    return fail(failed.error.message);
   }
 
   toast(message, async () => {
-    await sb.from("proposals")
-      .update({ status: previous, decided_at: null, snooze_until: null, action: previousAction })
-      .eq("id", proposal.id);
-    proposal.status = previous;
+    await Promise.all(previous.map((pv) =>
+      sb.from("proposals").update({ status: pv.status, decided_at: null, snooze_until: null, action: pv.action })
+        .eq("id", pv.id)));
+    for (const e of entries) {
+      const pv = previous.find((x) => x.id === e.proposal.id);
+      e.proposal.status = pv.status;
+    }
     load();
   });
 

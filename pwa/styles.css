@@ -371,6 +371,9 @@ input {
 }
 .mail-item span { flex: 1; }
 .mail-item.optout span { text-decoration: line-through; color: var(--muted); }
+.mail-item .mail-open { font-size: 0.8rem; margin-left: 0.2rem; }
+.group-label.mailbox { color: var(--accent); }
+.card.is-bundle .mail-list { max-height: 60vh; overflow-y: auto; }
 
 /* --- skeleton ------------------------------------------------------------ */
 .skeleton {
